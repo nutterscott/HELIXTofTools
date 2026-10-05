@@ -18,6 +18,14 @@ These tools run in the HELIX environment.
 - **ProcessSkeletor.sh**: Start to finish processing of a run from run list, including skeletor, AnalTOFSkel.C, and MakeSkeletorPlotsBatch.C
 - **MultiSkeletor.ss**: Run multiple copies of skeletor simultaneously from input run list.
 
-Owner:
+# Processing:
+For each run, do this in order:
+- skeletor
+- AnalTOFSkel.C
+- MakeSkeletorPlotsBatch.C
+
+Check codes for input parameters, or example in ProcessSkeletor.sh.
+
+# Owner:
 Scott Nutter
 nutters@nku.edu
