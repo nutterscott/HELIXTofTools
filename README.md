@@ -5,7 +5,7 @@ These tools run in the HELIX environment.
 - **AnalTOFSkel.C**: Takes skeletor output root file and creates histograms
 - **PSUThicknessTools.C**: Routines for returning thickness of scintillator as function of position.
 - **PSUTofTools12.C**: Various routines to assist in analysis; reads in v12 of tofcal.root.
-- **MakeSkeletorPlotsBatch.C**: Takes AnalTOFSkel.C output and makes pdf of histograms. Also does some fits (DCTY vs TimeDiff and DCTY vs ChargeDivFrac) and writes fit results to text files.
+- **MakeSkeletorPlotsBatch.C**: Takes AnalTOFSkel.C output and makes pdf of histograms. Also does some fits (DCTY vs TimeDiff and DCTY vs ChargeDivFrac) and writes fit results to text files. NB: Full isochrones v9 take 6GB/run, so set the number of runs to execute simultaneously accordingly so that you don't run out of memory.
 - **WriteRunNumbers.C**: Use with files in Analysis/Runlists/ to generate your own runlists.
 
 ## Lists of runs
