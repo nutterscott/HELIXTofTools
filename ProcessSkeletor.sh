@@ -27,7 +27,7 @@ while IFS= read -r line; do
     outfile=$OUTDIR/skeletor.$line.root
     echo Processing $infile into $outfile...
 #Step 1: Make TOF tree. Input: stg1 file, output skeletor.runnum.root
-#    ./bin/skeletor.exe --ckf -c -o $outfile $infile &> $OUTDIR/$line.out
+    ./bin/skeletor.exe --ckf -c -o $outfile $infile &> $OUTDIR/$line.out
 #Step 2: Make histograms and profiles. Output: skeletor.runnum.AnalTOFSkel.root
     echo Processing $outfile with AnalTOFSkel.C...
     root -l -q -b 'AnalTOFSkel.C("'"${outfile}"'")'
