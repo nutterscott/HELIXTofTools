@@ -12,7 +12,9 @@ OUTDIR=/data/skeletor
 #Choices: GV, KS, or blank
 TOFtype=GV
 # Max number of running copies at the same time
-max_jobs=40
+# NB: Full isochrones v9 take 6GB/run, so set the number of runs to execute 
+# simultaneously accordingly so that you don't run out of memory.
+max_jobs=35
 
 if [ ! -f "$1" ]; then
     echo "Error: File $1 not found."
