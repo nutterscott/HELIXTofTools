@@ -357,15 +357,15 @@ void AnalTOFSkel(TString infile)
     double botSig = botTOF->getSignal();
     double boreSig = boreTOF->getSignal();
 
-    double ttofZ  = pow(topSig  * tvars.topPLC, 1.0/1.7);
-    double boreZ  = pow(boreSig * tvars.borePLC, 1.0/1.7);
-    double btofZ  = pow(botSig  * tvars.botPLC, 1.0/1.7);
+    double ttofZ  = pow(topSig  / tvars.topPLC, 1.0/1.7);
+    double boreZ  = pow(boreSig / tvars.borePLC, 1.0/1.7);
+    double btofZ  = pow(botSig  / tvars.botPLC, 1.0/1.7);
     double allZ   = (ttofZ+boreZ+btofZ)/3.;
     double tbZ    = (ttofZ+btofZ)/2.;
 
-    double ttofZSC  = topSig  * tvars.topPLC;
-    double boreZSC  = boreSig * tvars.borePLC;
-    double btofZSC  = botSig  * tvars.botPLC;
+    double ttofZSC  = topSig  / tvars.topPLC;
+    double boreZSC  = boreSig / tvars.borePLC;
+    double btofZSC  = botSig  / tvars.botPLC;
     double allZSC   = sqrt((ttofZSC+boreZSC+btofZSC)/3.);
     double allZSCcorr = (allZSC - 0.2499) / 0.8385;
     double tbZSC    = sqrt((ttofZSC+btofZSC)/2.);
