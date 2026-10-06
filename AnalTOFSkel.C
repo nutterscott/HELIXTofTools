@@ -328,9 +328,16 @@ void AnalTOFSkel(TString infile)
 //        if (i==0) padt2D = &fCal.topt[padID[i]][0][0];
 //        if (i==2) padt2D = &fCal.bott[padID[i]-8][0][0];
         //from tofcal12:
-        if (i==0 || i==2) padt2D = &fCal.padt[padID[i]][0][0];
-        if (i==1) padt2D = &fCal.boret[0][0][0]; //bore
-        thck[i] = thickness(i, padt2D, (tofX[i]-padx[i])/10. + tolx[i]/10., (tofY[i]-pady[i])/10. + toly[i]/10.);  // positions in cm, not mm (/10.), and need to shift by 1/2 paddle dimension
+        if (i==0 || i==2)
+        {
+          padt2D = &fCal.padt[padID[i]][0][0];
+          thck[i] = thickness(i, padt2D, (tofX[i]-padx[i])/10. + tolx[i]/10., (tofY[i]-pady[i])/10. + toly[i]/10.);  // positions in cm, not mm (/10.), and need to shift by 1/2 paddle dimension (because of thickness map for long paddles)
+        } 
+        if (i==1) //bore
+        {
+          padt2D = &fCal.boret[0][0][0]; //bore
+          thck[i] = thickness(i, padt2D, (tofX[i]-padx[i])/10. , (tofY[i]-pady[i])/10. );  // positions in cm, not mm (/10.); the BP does NOT need the 1/2 paddle shift
+        }
       	hthck[padID[i]] -> Fill(thck[i]);
       }
     }
@@ -350,15 +357,15 @@ void AnalTOFSkel(TString infile)
     double botSig = botTOF->getSignal();
     double boreSig = boreTOF->getSignal();
 
-    double ttofZ  = pow(topSig * tvars.topPLC, 1.0/1.7);
-    double boreZ  = pow(botSig * tvars.botPLC, 1.0/1.7);
-    double btofZ  = pow(boreSig* tvars.borePLC, 1.0/1.7);
+    double ttofZ  = pow(topSig  * tvars.topPLC, 1.0/1.7);
+    double boreZ  = pow(boreSig * tvars.borePLC, 1.0/1.7);
+    double btofZ  = pow(botSig  * tvars.botPLC, 1.0/1.7);
     double allZ   = (ttofZ+boreZ+btofZ)/3.;
     double tbZ    = (ttofZ+btofZ)/2.;
 
-    double ttofZSC  = topSig * tvars.topPLC;
-    double boreZSC  = botSig * tvars.botPLC;
-    double btofZSC  = boreSig* tvars.borePLC;
+    double ttofZSC  = topSig  * tvars.topPLC;
+    double boreZSC  = boreSig * tvars.borePLC;
+    double btofZSC  = botSig  * tvars.botPLC;
     double allZSC   = sqrt((ttofZSC+boreZSC+btofZSC)/3.);
     double allZSCcorr = (allZSC - 0.2499) / 0.8385;
     double tbZSC    = sqrt((ttofZSC+btofZSC)/2.);
