@@ -386,17 +386,17 @@ bool loadSCTOFCalibsv12(string ipfName = kInputTofcalName) //only called once V1
   ////////  NB: put checks here to make sure file is not already open?  /////////  
 
   if (!std::filesystem::exists(ipfName.c_str())) {
-    cout << "loadSCTOFCalibs => file not found: " << ipfName << endl;
+    cout << "loadSCTOFCalibsv12 => file not found: " << ipfName << endl;
     exit(-1);
   }
 
   fFile = new TFile(ipfName.c_str());
   if (!fFile->IsOpen()) {
-    cout << "loadSCTOFCalibs => could not open file: " << ipfName << endl;
+    cout << "loadSCTOFCalibsv12 => could not open file: " << ipfName << endl;
     exit(-1);
   }
 
-  cout << "loadSCTOFCalibs : load from " << ipfName << endl;
+  cout << "loadSCTOFCalibsv12 : load from " << ipfName << endl;
 
   fTOFcal = (TTree*)fFile->Get("tofcal");
 
