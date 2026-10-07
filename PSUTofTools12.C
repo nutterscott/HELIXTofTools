@@ -5,8 +5,8 @@
 //bool createSCTOFCalibs(string opfName = kOutputTofcalName) //only called once. Creates ttree for writing new tofcals
 //void getSCTOFCalibsForRun(int runnum) //Getting fCal for run runnum
 //bool loadSCTOFCalibsv12(string ipfName = kInputTofcalName) // Open INPUT SCTOF parameter file v12 and after (root TTree organized by run number). Only called once.
-//void translateAllEntriestoHLXNumbering() //one time pass through all entries and writing out to a new tofcal tree with HLX numbering scheme
 //void fillFitSlopeIntercepts(int runNum) //fill the slopes and intercepts in the new ttree by reading from files. Input is run number.
+//void modifyTofcal() //one time pass through all entries and writing out to a new tofcal tree with modified branches and/or values
 
 //Deprecated:
 //bool loadSCTOFCalibs(string ipfName = kInputTofcalName) // Open INPUT SCTOF parameter file v11 and before (root TTree organized by run number). Only called once.
@@ -18,7 +18,7 @@
 /////  SET THESE FOR READING AND TRANSLATION!! ////
 //Set up input and output tofcal ttree
 string kInputTofcalName = "tofcal12.root";
-string kOutputTofcalName = "tofcal13.root";
+string kOutputTofcalName = "tofcal12.1.root";
 
 
 //TREE VARIABLES: Saved in structure for eases of copying
@@ -550,7 +550,7 @@ bool loadSCTOFCalibs(string ipfName = kInputTofcalName) //only called once V11 a
 
 }
 */
-void translateAllEntriestoHLXNumbering() //one time pass through all entries and writing out to a new tofcal tree with HLX numbering scheme
+void modifyTofcal() //one time pass through all entries and writing out to a new tofcal tree
 {
   // Load INPUT tofcal calibration data
   loadSCTOFCalibsv12();
@@ -569,12 +569,10 @@ void translateAllEntriestoHLXNumbering() //one time pass through all entries and
     //get current set of tofcal parameters:
     getSCTOFCalibsForRun(runnum, false);  //don't do adjustment of bad parameters
 
-
-
     //switch numbering scheme for this entry v11->v12:
 //    switchfCaltoHLXNumbering();
 
-    //add branches:
+    //add or modify branches:
     fillFitSlopeIntercepts(runnum);
 
     //fill tofcal ttree 

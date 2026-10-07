@@ -11,7 +11,7 @@
 
 #include "PSUThicknessTools.C"
 
-void AnalTOFSkel(TString infile)
+void AnalTOFSkel(TString infile, bool recalcChargeDivPos = false, bool recalcTimeDiffPos = false )
 {
   /// Get the geometry singleton - it will autoload the files.
   auto theGeom = HLX_Geometry::getInstance();
@@ -27,7 +27,7 @@ void AnalTOFSkel(TString infile)
   /// INPUT skeletor TOF info
 //  vector<HLX_Stg2_TOFHit>* TOFHits = nullptr; //top, bore, bottom
   HLX_Stg2_TOFHit* topTOF = new HLX_Stg2_TOFHit();
-  HLX_Stg2_TOFHit* boreTOF = new HLX_Stg2_TOFHit();
+  HLX_Stg2_TOFHit* borTOF = new HLX_Stg2_TOFHit();
   HLX_Stg2_TOFHit* botTOF = new HLX_Stg2_TOFHit(); //top, bore, bottom
 //Hits:
   struct TOFStruct {
@@ -46,7 +46,7 @@ void AnalTOFSkel(TString infile)
 
 //  toft->SetBranchAddress("TOFHits", &TOFHits);
   toft->SetBranchAddress("topTOF", &topTOF);
-  toft->SetBranchAddress("boreTOF", &boreTOF);
+  toft->SetBranchAddress("boreTOF", &borTOF);
   toft->SetBranchAddress("botTOF", &botTOF);
   toft->SetBranchAddress("tvars",&tvars);
   toft->SetBranchAddress("runnum",&runnum);
@@ -223,17 +223,17 @@ void AnalTOFSkel(TString infile)
     getSCTOFCalibsForRun(runnum);
     
 //    cout << ik << "\t" << tvars.ttofX << "\t" << topdircos[0] << "\t" << richZEst << endl;
-//    cout << "\t" << topTOF->fTime << "\t" << boreTOF->getSignal() << endl;
+//    cout << "\t" << topTOF->fTime << "\t" << borTOF->getSignal() << endl;
     
-    HLX_Stg2_TOFPaddleEndHit tE = topTOF->getPaddleEndHit(HLX_Geometry_TOF::kEast);
-    HLX_Stg2_TOFPaddleEndHit tW = topTOF->getPaddleEndHit(HLX_Geometry_TOF::kWest);
-    HLX_Stg2_TOFPaddleEndHit bE = botTOF->getPaddleEndHit(HLX_Geometry_TOF::kEast);
-    HLX_Stg2_TOFPaddleEndHit bW = botTOF->getPaddleEndHit(HLX_Geometry_TOF::kWest);
-    HLX_Stg2_TOFPaddleEndHit boreE = boreTOF->getPaddleEndHit(HLX_Geometry_TOF::kEast);
-    HLX_Stg2_TOFPaddleEndHit boreW = boreTOF->getPaddleEndHit(HLX_Geometry_TOF::kWest);
+    HLX_Stg2_TOFPaddleEndHit tE     = topTOF->getPaddleEndHit(HLX_Geometry_TOF::kEast);
+    HLX_Stg2_TOFPaddleEndHit tW     = topTOF->getPaddleEndHit(HLX_Geometry_TOF::kWest);
+    HLX_Stg2_TOFPaddleEndHit boreE  = borTOF->getPaddleEndHit(HLX_Geometry_TOF::kEast);
+    HLX_Stg2_TOFPaddleEndHit boreW  = borTOF->getPaddleEndHit(HLX_Geometry_TOF::kWest);
+    HLX_Stg2_TOFPaddleEndHit bE     = botTOF->getPaddleEndHit(HLX_Geometry_TOF::kEast);
+    HLX_Stg2_TOFPaddleEndHit bW     = botTOF->getPaddleEndHit(HLX_Geometry_TOF::kWest);
     
-    //watch this: an array of paddle ends!
-    HLX_Stg2_TOFPaddleEndHit endHit[6] = {tE, tW, bE, bW, boreE, boreW};
+    //watch this: an array of paddle ends! Order: Top, bore, bottom
+    HLX_Stg2_TOFPaddleEndHit endHit[6] = {tE, tW, boreE, boreW, bE, bW};
     //cool, huh?
     
     //get fees on paddle ends
@@ -268,21 +268,22 @@ void AnalTOFSkel(TString infile)
     double timeDiff = botTOF->fTime - topTOF->fTime;
     hTOFdT->Fill(timeDiff);
 
-    //Collect results:
+    //////////////////////////////////////////////////////
+    //Collect info in shortcut arrays[3] by paddle:
 
     ///ORDERING: TOP, BORE, BOTTOM
 
     //HLX numbering:
-    int tpaddleID=topTOF->fTag.getPaddleID();
-    int BpaddleID=boreTOF->fTag.getPaddleID();
-    int bpaddleID=botTOF->fTag.getPaddleID();
+    int toppadID = topTOF->fTag.getPaddleID();
+    int borpadID = borTOF->fTag.getPaddleID();
+    int botpadID = botTOF->fTag.getPaddleID();
     
     //Watch this trick: set up arrays to avoid lots of repeated code.
-    int padID[3] = {tpaddleID, BpaddleID, bpaddleID};    
-    HLX_Stg2_TOFHit* tofHits[3] = {topTOF, boreTOF, botTOF};  //not copies, so use pointer ->
-    double tofX[3] = {tvars.ttofX,tvars.boreX,tvars.btofX};
-    double tofY[3] = {tvars.ttofY,tvars.boreY,tvars.btofY};
-    double padPLC[3] = {tvars.topPLC,tvars.borePLC,tvars.botPLC};
+    int padID[3] = {toppadID, borpadID, botpadID};    
+    HLX_Stg2_TOFHit* tofHits[3] = {topTOF, borTOF, botTOF};  //not copies, so use pointer ->
+    double tofX[3]    = {tvars.ttofX, tvars.boreX,  tvars.btofX};
+    double tofY[3]    = {tvars.ttofY, tvars.boreY,  tvars.btofY};
+    double padPLC[3]  = {tvars.topPLC,tvars.borePLC,tvars.botPLC};
 
     //get paddle center locations in order to normalize DCTY to paddle center
     double padCenter[3] = {0.};
@@ -298,14 +299,14 @@ void AnalTOFSkel(TString infile)
     ///following distilled down from SC code to correct signal for paddle thicknesses
     //paddle locations:
     double padx[3] = {
-      theGeom->fTOF.fTopLocX + theGeom->fTOF.fPaddleMetrology[tpaddleID]["xloc"],
-      theGeom->fTOF.fBorePaddleLocX + theGeom->fTOF.fPaddleMetrology[BpaddleID]["xloc"],
-      theGeom->fTOF.fBottomLocX + theGeom->fTOF.fPaddleMetrology[bpaddleID]["xloc"]
+      theGeom->fTOF.fTopLocX + theGeom->fTOF.fPaddleMetrology[toppadID]["xloc"],
+      theGeom->fTOF.fBorePaddleLocX + theGeom->fTOF.fPaddleMetrology[borpadID]["xloc"],
+      theGeom->fTOF.fBottomLocX + theGeom->fTOF.fPaddleMetrology[botpadID]["xloc"]
     };
     double pady[3] = {
-      theGeom->fTOF.fTopLocY + theGeom->fTOF.fPaddleMetrology[tpaddleID]["yloc"],
-      theGeom->fTOF.fBorePaddleLocY + theGeom->fTOF.fPaddleMetrology[BpaddleID]["yloc"],
-      theGeom->fTOF.fBottomLocY + theGeom->fTOF.fPaddleMetrology[bpaddleID]["yloc"]
+      theGeom->fTOF.fTopLocY + theGeom->fTOF.fPaddleMetrology[toppadID]["yloc"],
+      theGeom->fTOF.fBorePaddleLocY + theGeom->fTOF.fPaddleMetrology[borpadID]["yloc"],
+      theGeom->fTOF.fBottomLocY + theGeom->fTOF.fPaddleMetrology[botpadID]["yloc"]
     };
 
     //a lamda to check to see if hit is inside paddle:
@@ -352,33 +353,54 @@ void AnalTOFSkel(TString infile)
 
     
     
-    //signals:
+    //signals: Didn't these get corrected for pathlength in TemplateAnal already, and now need to have that uncorrected before we can correct again here?
     double topSig = topTOF->getSignal();
     double botSig = botTOF->getSignal();
-    double boreSig = boreTOF->getSignal();
+    double borSig = borTOF->getSignal();
 
     double ttofZ  = pow(topSig  / tvars.topPLC, 1.0/1.7);
-    double boreZ  = pow(boreSig / tvars.borePLC, 1.0/1.7);
+    double boreZ  = pow(borSig / tvars.borePLC, 1.0/1.7);
     double btofZ  = pow(botSig  / tvars.botPLC, 1.0/1.7);
     double allZ   = (ttofZ+boreZ+btofZ)/3.;
     double tbZ    = (ttofZ+btofZ)/2.;
 
     double ttofZSC  = topSig  / tvars.topPLC;
-    double boreZSC  = boreSig / tvars.borePLC;
+    double boreZSC  = borSig / tvars.borePLC;
     double btofZSC  = botSig  / tvars.botPLC;
     double allZSC   = sqrt((ttofZSC+boreZSC+btofZSC)/3.);
     double allZSCcorr = (allZSC - 0.2499) / 0.8385;
     double tbZSC    = sqrt((ttofZSC+btofZSC)/2.);
     
     
+    
+    /////////////////////////////////////////////////////
     //fill all paddle-based hists and profiles
     for (int j=0; j<3; j++)
     {
-      hChargeDivPos [padID[j]]->Fill(tofY[j]-padCenter[j],        tofHits[j]->fChargeDivPos);
-      hTimeDiffPos  [padID[j]]->Fill(tofY[j]-padCenter[j],        tofHits[j]->fTimeDiffPos);
-      hPosDiff      [padID[j]]->Fill(tofY[j]-padCenter[j],        tofHits[j]->fTimeDiffPos - tofHits[j]->fChargeDivPos);
-      hZdT          [padID[j]]->Fill(tofHits[j]->fTimeDiffPos,    tofHits[j]->fChargeDivPos);
-      pZdT          [padID[j]]->Fill(tofHits[j]->fTimeDiffPos,    tofHits[j]->fChargeDivPos);
+      //do recalcs here if requested to check new parameters:
+      double chargeDivPos = tofHits[j]->fChargeDivPos;
+      if (recalcChargeDivPos)
+      {
+        //ChargeDivFrac position from fit to DCTY vs fChargeDivFrac
+        double Zdiff = tofHits[j]->fChargeDivFrac;
+        chargeDivPos = fCal.ZDm[padID[j]] * Zdiff + fCal.ZDb[padID[j]]; // = DCTY - center
+        chargeDivPos += padCenter[j];
+
+      }
+      double timeDiffPos = tofHits[j]->fTimeDiffPos;
+      if (recalcTimeDiffPos)
+      {
+        //tofcal12:
+        timeDiffPos = fCal.TDm[padID[j]] * tofHits[j]->fTimeDiff + fCal.TDb[padID[j]]; // = DCTY - center
+        timeDiffPos += padCenter[j];
+      }
+    
+      //fill histos:
+      hChargeDivPos [padID[j]]->Fill(tofY[j]/*-padCenter[j]*/,    chargeDivPos);  //consistent with calculation of timeDiffPos and chargeDivPos above and in TemplateAnaly
+      hTimeDiffPos  [padID[j]]->Fill(tofY[j]/*-padCenter[j]*/,    timeDiffPos);
+      hPosDiff      [padID[j]]->Fill(tofY[j]/*-padCenter[j]*/,    timeDiffPos - chargeDivPos);
+      hZdT          [padID[j]]->Fill(timeDiffPos,                 chargeDivPos);
+      pZdT          [padID[j]]->Fill(timeDiffPos,                 chargeDivPos);
       hZdct         [padID[j]]->Fill(tofHits[j]->fChargeDivFrac,  tofY[j]-padCenter[j]);
       pZdct         [padID[j]]->Fill(tofHits[j]->fChargeDivFrac,  tofY[j]-padCenter[j]);
       hTdct         [padID[j]]->Fill(tofHits[j]->fTimeDiff,       tofY[j]-padCenter[j]);

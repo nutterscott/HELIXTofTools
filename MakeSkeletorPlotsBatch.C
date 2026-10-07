@@ -48,7 +48,7 @@ void DrawDownArrowMm(double xData,
   gPad->Update();
 }
 
-void MakeSkeletorPlotsBatch(TString fname="", TString runNum="", TString TOFtype="")
+void MakeSkeletorPlotsBatch(TString fname, TString runNum="", TString TOFtype="", bool writeFits = true)
 {
   
   //Examples:
@@ -107,7 +107,9 @@ void MakeSkeletorPlotsBatch(TString fname="", TString runNum="", TString TOFtype
   TString toutname = fout;
   toutname.ReplaceAll(".pdf",".EnddT.txt");
   
-  ofstream tout(toutname.Data(),std::ios::out);
+  ofstream tout;
+  
+  if (writeFits) tout.open(toutname.Data(),std::ios::out);
   
   for (int i=0;i<16;i++)
   {
@@ -131,13 +133,13 @@ void MakeSkeletorPlotsBatch(TString fname="", TString runNum="", TString TOFtype
       double sigma = hEnddT[i*2+j]->GetFunction("gaus")->GetParameter("Sigma");
       mean = hEnddT[i*2+j]->GetFunction("gaus")->GetParameter("Mean");      
       hEnddT[i*2+j]->Draw();
-      tout << i << "\t" << j << "\t" << mean << "\t" << sigma << endl; 
+      if (writeFits) tout << i << "\t" << j << "\t" << mean << "\t" << sigma << endl; 
 //      cout << endl << "DREW HIST " << hknt << "  " << hEnddT[i*2+j]->GetName() << endl << endl;
       hknt++;
     }
   }
   
-  tout.close();
+  if (writeFits) tout.close();
 
   //now draw other plots:
   /*
@@ -300,7 +302,8 @@ void MakeSkeletorPlotsBatch(TString fname="", TString runNum="", TString TOFtype
 //  TString poutname = baseName+TOFtype+runNum+".PosCompare.txt";  
   TString poutname = baseName;
   poutname.ReplaceAll(".pdf",".PosCompare.txt");  
-  ofstream pout(poutname.Data(),std::ios::out);
+  ofstream pout;
+  if (writeFits) pout.open(poutname.Data(),std::ios::out);
   
   cname = TString::Format("%s%d","c",cknt);
   cv[cknt] = new TCanvas(cname.Data(),cname.Data(),1);
@@ -321,8 +324,8 @@ void MakeSkeletorPlotsBatch(TString fname="", TString runNum="", TString TOFtype
     double b = (pfit)? pfit->GetParameter("p0"): -10;
     double m = (pfit)? pfit->GetParameter("p1"): -10;
     if ( isnan(b) || isnan(m) ) b = m = -10;
-//    pout << i << "\t" << "{" << b << ", " << m << "}," << endl;
-    pout << i << "\t" << b << "\t" << m << endl;
+//    if (writeFits) pout << i << "\t" << "{" << b << ", " << m << "}," << endl;
+    if (writeFits) pout << i << "\t" << b << "\t" << m << endl;
 //    cout << endl << "DRAWING " << i << "  " << hZdT[i]->GetName() << endl << endl;
     hZdT[i]->Draw();
     pZdT[i]->Draw("same");
@@ -333,7 +336,7 @@ void MakeSkeletorPlotsBatch(TString fname="", TString runNum="", TString TOFtype
     }    
   }
   
-  pout.close();
+  if (writeFits) pout.close();
   
   cknt++;
   
@@ -348,7 +351,7 @@ void MakeSkeletorPlotsBatch(TString fname="", TString runNum="", TString TOFtype
   poutname = baseName;
   poutname.ReplaceAll(".pdf",".ChargeDivFrac.txt");  
 //  ofstream pout;
-  pout.open(poutname.Data(),std::ios::out);
+  if (writeFits) pout.open(poutname.Data(),std::ios::out);
   
   cname = TString::Format("%s%d","c",cknt);
   cv[cknt] = new TCanvas(cname.Data(),cname.Data(),1);
@@ -370,8 +373,8 @@ void MakeSkeletorPlotsBatch(TString fname="", TString runNum="", TString TOFtype
     double b = (pfit)? pfit->GetParameter("p0"): -10;
     double m = (pfit)? pfit->GetParameter("p1"): -10;
     if ( isnan(b) || isnan(m) ) b = m = -10;
-//    pout << i << "\t" << "{" << b << ", " << m << "}," << endl;
-    pout << i << "\t" << b << "\t" << m << endl;
+//    if (writeFits) pout << i << "\t" << "{" << b << ", " << m << "}," << endl;
+    if (writeFits) pout << i << "\t" << b << "\t" << m << endl;
 //    cout << endl << "DRAWING " << i << "  " << hZdct[i]->GetName() << endl << endl;
     hZdct[i]->Draw();
     pZdct[i]->Draw("same");
@@ -382,7 +385,7 @@ void MakeSkeletorPlotsBatch(TString fname="", TString runNum="", TString TOFtype
     }    
   }
 
-  pout.close();
+  if (writeFits) pout.close();
 
   cknt++;
 
@@ -396,7 +399,7 @@ void MakeSkeletorPlotsBatch(TString fname="", TString runNum="", TString TOFtype
   poutname = baseName;
   poutname.ReplaceAll(".pdf",".TimeDiff.txt");  
   
-  pout.open(poutname.Data(),std::ios::out);
+  if (writeFits) pout.open(poutname.Data(),std::ios::out);
   
   cname = TString::Format("%s%d","c",cknt);
   cv[cknt] = new TCanvas(cname.Data(),cname.Data(),1);
@@ -418,8 +421,8 @@ void MakeSkeletorPlotsBatch(TString fname="", TString runNum="", TString TOFtype
     double b = (pfit)? pfit->GetParameter("p0"): -10;
     double m = (pfit)? pfit->GetParameter("p1"): -10;
     if ( isnan(b) || isnan(m) ) b = m = -10;
-//    pout << i << "\t" << "{" << b << ", " << m << "}," << endl;
-    pout << i << "\t" << b << "\t" << m << endl;
+//    if (writeFits) pout << i << "\t" << "{" << b << ", " << m << "}," << endl;
+    if (writeFits) pout << i << "\t" << b << "\t" << m << endl;
 //    cout << endl << "DRAWING " << i << "  " << hTdct[i]->GetName() << endl << endl;
     hTdct[i]->Draw();
     pTdct[i]->Draw("same");
@@ -430,7 +433,7 @@ void MakeSkeletorPlotsBatch(TString fname="", TString runNum="", TString TOFtype
     }    
   }
 
-  pout.close();
+  if (writeFits) pout.close();
 
   cknt++;
   /*
@@ -444,7 +447,7 @@ void MakeSkeletorPlotsBatch(TString fname="", TString runNum="", TString TOFtype
   pveff = new TProfile*[17];
 
   poutname = baseName+TOFtype+runNum+".veff.txt";  
-  pout.open(poutname.Data(),std::ios::out);
+  if (writeFits) pout.open(poutname.Data(),std::ios::out);
   
   cname = TString::Format("%s%d","c",cknt);
   cv[cknt] = new TCanvas(cname.Data(),cname.Data(),1);
@@ -466,7 +469,7 @@ void MakeSkeletorPlotsBatch(TString fname="", TString runNum="", TString TOFtype
     TF1* pfit = pveff[i]->GetFunction("pol1");
     double b = (pfit)? pfit->GetParameter("p0"): -10;
     double m = (pfit)? pfit->GetParameter("p1"): -10;
-    pout << i << "\t" << "{" << b << ", " << m << "}," << endl;
+    if (writeFits) pout << i << "\t" << "{" << b << ", " << m << "}," << endl;
     cout << endl << "DRAWING " << i << "  " << hveff[i]->GetName() << endl << endl;
     hveff[i]->Draw();
     pveff[i]->Draw("same");
