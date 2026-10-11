@@ -7,9 +7,12 @@
 #include "PSUTofTools12.C"
 /////  SET THIS IN PSUTofTools12.C!! ////
 //Set up input tofcal ttree:
-//string kInputTofcalName = "tofcal12.root";
+//string kInputTofcalName = "tofcal12.1.root";
 
+//include PSU thickness tools for paddle thicknesses
 #include "PSUThicknessTools.C"
+
+//#include "SliceAndDice.C"
 
 void AnalTOFSkel(TString infile, bool recalcChargeDivPos = false, bool recalcTimeDiffPos = false )
 {
@@ -69,127 +72,128 @@ void AnalTOFSkel(TString infile, bool recalcChargeDivPos = false, bool recalcTim
 //  createSCTOFCalibs();
   
   //////////////////////////////////////////
-  //book some histograms
+  //BOOK SOME HISTOGRAMS
+  //////////////////////////////////////////
   //These 3D histograms don't seem to work as TProfiles, which I prefer to fit over fitting the 2D histo.
 //  TH3D* hZdct = new TH3D("hZdct","padID vs DCTY vs fChargeDivFrac;paddle;fChargeDivFrac;dctY (mm)",17,0,17, 50,-1,1, 200,-1000,1000);
 //  TH3D* hTdct = new TH3D("hTdct","padID vs DCTY vs fTimeDiff;paddle;fTimeDiff;dctY (mm)",17,0,17, 50,-12,12, 200,-1000,1000);
 
   //pos from timing, chargeDivFrac, and difference
-  TH2D** hChargeDivPos;
-  hChargeDivPos = new TH2D*[17];
-  TH2D** hTimeDiffPos;
+  TH2D** hChargeDivPos;                 //position from charge division 
+  hChargeDivPos     = new TH2D*[17];
+  TH2D** hSignal;                       // Charge (getSignal()) vs DCTY for all paddles
+  hSignal           = new TH2D*[17];
+  TH2D** hTimeDiffPos;                  //position from end to end time difference 
   hTimeDiffPos      = new TH2D*[17];
-  TH2D** hPosDiff;
-  hPosDiff      = new TH2D*[17];
-  TH2D** hXY;   // SC  check (X,Y) for each paddle
-  hXY      = new TH2D*[17];
-  TH2D** hXYshift;   // SC  check (X,Y) for each paddle; (X,Y) shifted to a paddle position (0-20 cm, 0-180 cm)
-  hXYshift      = new TH2D*[17];
-  TH2D** hXYChi;   // SC  check (X,Y) for each paddle, after a DCTChi2 cut
-  hXYChi      = new TH2D*[17];
-  TH2D** hXYHitC;   // SC  check (X,Y) for each paddle, after a DCT hitCount cut
-  hXYHitC      = new TH2D*[17];
-  TH1D** hthck;   // SC  thckness at (X,Y) for each paddle
-  hthck      = new TH1D*[17];
+  TH2D** hPosDiff;                      //comparison of position from charge division and time diff
+  hPosDiff          = new TH2D*[17];
+  TH2D** hXY;                           // SC  check (X,Y) for each paddle
+  hXY               = new TH2D*[17];
+  TH2D** hXYshift;                      // SC  check (X,Y) for each paddle; (X,Y) shifted to a paddle position (0-20 cm, 0-180 cm)
+  hXYshift          = new TH2D*[17];
+  TH2D** hXYChi;                        // SC  check (X,Y) for each paddle, after a DCTChi2 cut
+  hXYChi            = new TH2D*[17];
+  TH2D** hXYHitC;                       // SC  check (X,Y) for each paddle, after a DCT hitCount cut
+  hXYHitC           = new TH2D*[17];
+  TH1D** hthck;                         // SC  thckness at (X,Y) for each paddle
+  hthck             = new TH1D*[17];
+  TH2D** hZdT;                          //fChargeDivPos vs fTimeDiffPos timing differences
+  hZdT = new TH2D*[17];
+  TProfile** pZdT;
+  pZdT = new TProfile*[17];
+  TH2D** hZdct;                         //position differences: dcty vs fChargeDivFrac
+  hZdct = new TH2D*[17];
+  TProfile** pZdct;
+  pZdct = new TProfile*[17];
+  TH2D** hTdct;                         //position differences: fTimeDiff vs dcty
+  hTdct = new TH2D*[17];
+  TProfile** pTdct;
+  pTdct = new TProfile*[17];
+  
 
   for (int i=0;i<17;i++)
   {
     TString hname   = TString::Format("%s%d","hChargeDivPos",i);
     TString htitle  = TString::Format("%s%d%s","fChargeDivPos vs DCTY, paddle",i,";DCTY (mm);Pos (mm)");
     if (i<16) hChargeDivPos[i] = new TH2D(hname.Data(),htitle.Data(),200,-1000,1000, 200,-1000,1000);
-    else      hChargeDivPos[i] = new TH2D(hname.Data(),htitle.Data(),200,-100,100,  200,-400,400);
-    hname.ReplaceAll("hChargeDivPos","hTimeDiffPos");
-    htitle.ReplaceAll("ChargeDivPos","TimeDiffPos");
+    else      hChargeDivPos[i] = new TH2D(hname.Data(),htitle.Data(),200,-400,400,  200,-400,400);
+    
+    hname   = TString::Format("%s%d","hTimeDiffPos",i);
+    htitle  = TString::Format("%s%d%s","fTimeDiffPos vs DCTY, paddle",i,";DCTY (mm);Pos (mm)");
     if (i<16) hTimeDiffPos[i] = new TH2D(hname.Data(),htitle.Data(),200,-1000,1000, 200,-1000,1000);
     else      hTimeDiffPos[i] = new TH2D(hname.Data(),htitle.Data(),200,-400,400,   200,-400,400);
+    
+    TString hname1   = TString::Format("%s%d","hSignal",i);
+    TString htitle1  = TString::Format("%s%d%s","fSignal vs DCTY, paddle",i,";DCTY (mm);Signal (MIPs)");
+    if (i<16) hSignal[i]      = new TH2D(hname1.Data(),htitle1.Data(),50,-800,800, 400,0,20);
+    else      hSignal[i]      = new TH2D(hname1.Data(),htitle1.Data(),50,-300,300, 400,0,20);
+    
     TString hname2  = TString::Format("%s%d","hPosDiff",i);
     TString htitle2 = TString::Format("%s%d%s","Position diff (fTimeDiffPos-fChargeDivPos) vs DCTY, paddle",i,";DCTY (mm);Pos diff (mm)");
     if (i<16) hPosDiff[i]     = new TH2D(hname2.Data(),htitle2.Data(),200,-500,500, 200,-1000,1000);
     else      hPosDiff[i]     = new TH2D(hname2.Data(),htitle2.Data(),200,-400,400, 200,-400,400);
+    
     // SC create histograms of extrapolated (X,Y) value for each paddle, see if we see the scintillator shapes
     TString hname3  = TString::Format("%s%d","hXY",i);
     TString htitle3 = TString::Format("%s%d%s","DCTY vs DCTX, paddle",i,";DCTX (mm);DCTY (mm)");
-    if (i<16) hXY[i]     = new TH2D(hname3.Data(),htitle3.Data(),200,-1000,1000, 200,-1000,1000);
-    else      hXY[i]     = new TH2D(hname3.Data(),htitle3.Data(),200,-400,400, 200,-400,400);
+    if (i<16) hXY[i]          = new TH2D(hname3.Data(),htitle3.Data(),200,-1000,1000, 200,-1000,1000);
+    else      hXY[i]          = new TH2D(hname3.Data(),htitle3.Data(),200,-400,400, 200,-400,400);
+    
     TString hname6  = TString::Format("%s%d","hXYshift",i);
     TString htitle6 = TString::Format("%s%d%s","shifted DCTY vs DCTX, paddle",i,";DCTX (mm);DCTY (mm)");
     if (i<16) hXYshift[i]     = new TH2D(hname6.Data(),htitle6.Data(),200,-1000,1000, 200,-1000,1000);
     else      hXYshift[i]     = new TH2D(hname6.Data(),htitle6.Data(),200,-400,400, 200,-400,400);
+    
     TString hname4  = TString::Format("%s%d","hXYChi",i);
     TString htitle4 = TString::Format("%s%d%s","DCTY vs DCTX with DCTChi2 cut, paddle",i,";DCTX (mm);DCTY (mm)");
-    if (i<16) hXYChi[i]     = new TH2D(hname4.Data(),htitle4.Data(),200,-1000,1000, 200,-1000,1000);
-    else      hXYChi[i]     = new TH2D(hname4.Data(),htitle4.Data(),200,-400,400, 200,-400,400);
+    if (i<16) hXYChi[i]       = new TH2D(hname4.Data(),htitle4.Data(),200,-1000,1000, 200,-1000,1000);
+    else      hXYChi[i]       = new TH2D(hname4.Data(),htitle4.Data(),200,-400,400, 200,-400,400);
+    
     TString hname5  = TString::Format("%s%d","hXYHitC",i);
     TString htitle5 = TString::Format("%s%d%s","DCTY vs DCTX with DCT hitCount cut, paddle",i,";DCTX (mm);DCTY (mm)");
-    if (i<16) hXYHitC[i]     = new TH2D(hname5.Data(),htitle5.Data(),200,-1000,1000, 200,-1000,1000);
-    else      hXYHitC[i]     = new TH2D(hname5.Data(),htitle5.Data(),200,-400,400, 200,-400,400);
+    if (i<16) hXYHitC[i]      = new TH2D(hname5.Data(),htitle5.Data(),200,-1000,1000, 200,-1000,1000);
+    else      hXYHitC[i]      = new TH2D(hname5.Data(),htitle5.Data(),200,-400,400, 200,-400,400);
+    
     TString hname7  = TString::Format("%s%d","hthck",i);
     TString htitle7 = TString::Format("%s%d","Thickness (mm) for paddle",i);
-    hthck[i]     = new TH1D(hname7.Data(),htitle7.Data(),200,8.,14.);
+    hthck[i]                  = new TH1D(hname7.Data(),htitle7.Data(),200,8.,14.);
+    
+    hname   = TString::Format("%s%d","hZdT",i);
+    htitle  = TString::Format("%s%d%s","fChargeDivPos vs fTimeDiffPos, paddle",i,";fTimeDiffPos (mm);fChargeDivPos (mm)");
+    if (i<16) hZdT[i] = new TH2D(hname.Data(),htitle.Data(),200,-1000,1000, 200,-1000,1000);
+    else      hZdT[i] = new TH2D(hname.Data(),htitle.Data(),200,-400,400,   200,-1000,1000);
+    hname.ReplaceAll("hZdT","pZdT");
+    if (i<16) pZdT[i] = new TProfile(hname.Data(),htitle.Data(),200,-1000,1000, -1000,1000);
+    else      pZdT[i] = new TProfile(hname.Data(),htitle.Data(),200,-400,400,   -1000,1000);
+    
+    hname   = TString::Format("%s%d","hZdct",i);
+    htitle  = TString::Format("%s%d%s","DCTY vs fChargeDivFrac, paddle",i,";fChargeDivFrac;dctY (mm)");
+    if (i<16) hZdct[i] = new TH2D(hname.Data(),htitle.Data(),50,-1,1,    200,-1000,1000);
+    else      hZdct[i] = new TH2D(hname.Data(),htitle.Data(),50,-0.4,0.4,200,-1000,1000);
+    hname.ReplaceAll("hZdct","pZdct");
+    if (i<16) pZdct[i] = new TProfile(hname.Data(),htitle.Data(),50,-1,1,    -1000,1000);
+    else      pZdct[i] = new TProfile(hname.Data(),htitle.Data(),50,-0.4,0.4,-1000,1000); //bore paddle
+    
+    hname              = TString::Format("%s%d","hTdct",i);
+    htitle             = TString::Format("%s%d%s","DCTY vs fTimeDiff, paddle",i,";fTimeDiff;dctY (mm)");
+    if (i<16) hTdct[i] = new TH2D(hname.Data(),htitle.Data(),60,-12,12,200,-1000,1000);
+    else      hTdct[i] = new TH2D(hname.Data(),htitle.Data(),60,-4,4,  200,-1000,1000);
+    hname.ReplaceAll("hTdct","pTdct");
+    if (i<16) pTdct[i] = new TProfile(hname.Data(),htitle.Data(),60,-12,12,-1000,1000);
+    else      pTdct[i] = new TProfile(hname.Data(),htitle.Data(),60,-4,4,  -1000,1000);
+    
   }
 
   //time walk explorations
   TH2D** hTW;
   hTW      = new TH2D*[72];  
-
+  
   for (int i=0;i<72;i++)
   {
     TString hname   = TString::Format("%s%d","hTW",i);
     TString htitle  = TString::Format("%s%d%s","fTimeDiffPos - DCTy vs FEE signalSumRaw, fee ",i,";signalSumRaw;fTimeDiffPos - DCTY (mm)");
     hTW[i] = new TH2D(hname.Data(),htitle.Data(),200,0,1000, 200,-400,400);
   }
-  
-  //fChargeDivPos vs fTimeDiffPos timing differences
-  TH2D** hZdT;
-  hZdT = new TH2D*[17];
-  TProfile** pZdT;
-  pZdT = new TProfile*[17];
-  
-  for (int i=0;i<17;i++)
-  {
-    TString hname   = TString::Format("%s%d","hZdT",i);
-    TString htitle  = TString::Format("%s%d%s","fChargeDivPos vs fTimeDiffPos, paddle",i,";fTimeDiffPos (mm);fChargeDivPos (mm)");
-    if (i<16) hZdT[i] = new TH2D(hname.Data(),htitle.Data(),200,-1000,1000, 200,-1000,1000);
-    else      hZdT[i] = new TH2D(hname.Data(),htitle.Data(),200,-400,400,   200,-1000,1000);
-    hname.ReplaceAll("hZdT","pZdT");
-    if (i<16) pZdT[i] = new TProfile(hname.Data(),htitle.Data(),200,-1000,1000, -1000,1000);
-    else      pZdT[i] = new TProfile(hname.Data(),htitle.Data(),200,-400,400,   -1000,1000);
-  }
-
-  //position differences: dcty vs fChargeDivFrac
-  TH2D** hZdct;
-  hZdct = new TH2D*[17];
-  TProfile** pZdct;
-  pZdct = new TProfile*[17];
-  
-  for (int i=0;i<17;i++)
-  {
-    TString hname   = TString::Format("%s%d","hZdct",i);
-    TString htitle  = TString::Format("%s%d%s","DCTY vs fChargeDivFrac, paddle",i,";fChargeDivFrac;dctY (mm)");
-    if (i<16) hZdct[i] = new TH2D(hname.Data(),htitle.Data(),50,-1,1,    200,-1000,1000);
-    else      hZdct[i] = new TH2D(hname.Data(),htitle.Data(),50,-0.4,0.4,200,-1000,1000);
-    hname.ReplaceAll("hZdct","pZdct");
-    if (i<16) pZdct[i] = new TProfile(hname.Data(),htitle.Data(),50,-1,1,    -1000,1000);
-    else      pZdct[i] = new TProfile(hname.Data(),htitle.Data(),50,-0.4,0.4,-1000,1000); //bore paddle
-  }
-
-  //position differences: fTimeDiff vs dcty
-  TH2D** hTdct;
-  hTdct = new TH2D*[17];
-  TProfile** pTdct;
-  pTdct = new TProfile*[17];
-  
-  for (int i=0;i<17;i++)
-  {
-    TString hname   = TString::Format("%s%d","hTdct",i);
-    TString htitle  = TString::Format("%s%d%s","DCTY vs fTimeDiff, paddle",i,";fTimeDiff;dctY (mm)");
-    if (i<16) hTdct[i] = new TH2D(hname.Data(),htitle.Data(),60,-12,12,200,-1000,1000);
-    else      hTdct[i] = new TH2D(hname.Data(),htitle.Data(),60,-4,4,  200,-1000,1000);
-    hname.ReplaceAll("hTdct","pTdct");
-    if (i<16) pTdct[i] = new TProfile(hname.Data(),htitle.Data(),60,-12,12,-1000,1000);
-    else      pTdct[i] = new TProfile(hname.Data(),htitle.Data(),60,-4,4,  -1000,1000);
-  }
-
   
   //fee to fee end timing differences
   TH1D** hEnddT;
@@ -206,10 +210,18 @@ void AnalTOFSkel(TString infile, bool recalcChargeDivPos = false, bool recalcTim
     }
   }
   
+  //charge determination using DCT track for cos(zenith) and thickness
+  auto hallZSC2     = new TH1D("hallZSC2" , "Z t+b+bp (SC), t. corr." , 400, 0, 20);
+  auto hallZSCcorr2 = new TH1D("hallZSCcorr2" , "Z t+b+bp (SC+fudge), t. corr." , 400, 0, 20);
+  auto htbZSC2      = new TH1D("htbZSC2" , "Z t+b (SC), t. corr." , 400, 0, 20);
+  TH2D* hBvT        = new TH2D("hBvT", "Signal: Bottom vs top;Top signal (MIP);Bottom signal (MIP)",200,0,20,200,0,20);
+
+  //time of flight:  
   auto hTOFdT   = new TH1D("hTOFdT" , "dTOF;ns" , 1000, -20, 20);
   
   //////////////////////////////////
   /////  INPUT EVENT LOOP /////
+  //////////////////////////////////
   //loop over events
   auto nevts = toft->GetEntries();
   cout << "Number of events: " << nevts << endl;
@@ -222,9 +234,37 @@ void AnalTOFSkel(TString infile, bool recalcChargeDivPos = false, bool recalcTim
     //get current set of tofcal parameters:
     getSCTOFCalibsForRun(runnum);
     
-//    cout << ik << "\t" << tvars.ttofX << "\t" << topdircos[0] << "\t" << richZEst << endl;
-//    cout << "\t" << topTOF->fTime << "\t" << borTOF->getSignal() << endl;
     
+    //////////////////////////////////////////////////////
+    //Collect info in shortcut arrays[3] by paddle:
+    //////////////////////////////////////////////////////
+
+    ///ORDERING: TOP, BORE, BOTTOM
+
+    //HLX numbering:
+    int toppadID = topTOF->fTag.getPaddleID();
+    int borpadID = borTOF->fTag.getPaddleID();
+    int botpadID = botTOF->fTag.getPaddleID();
+    
+    //Watch this trick: set up arrays to avoid lots of repeated code.
+    int padID[3] = {toppadID, borpadID, botpadID};    
+    HLX_Stg2_TOFHit* tofHits[3] = {topTOF, borTOF, botTOF};  //not copies, so use pointer ->
+    double tofX[3]    = {tvars.ttofX, tvars.boreX,  tvars.btofX};
+    double tofY[3]    = {tvars.ttofY, tvars.boreY,  tvars.btofY};
+    double padPLC[3]  = {tvars.topPLC,tvars.borePLC,tvars.botPLC};
+
+    //get paddle center locations in order to normalize DCTY to paddle center
+    double padCenter[3] = {0.};
+    double padLength[3] = {0.};
+    for (int j=0; j<3; j++)
+    {
+      double west = tofHits[j]->fHitWest.getY();
+      double east = tofHits[j]->fHitEast.getY();
+      padCenter[j] = (west + east) / 2;
+      padLength[j] = (west - east);
+    }
+    
+    //paddle ends:
     HLX_Stg2_TOFPaddleEndHit tE     = topTOF->getPaddleEndHit(HLX_Geometry_TOF::kEast);
     HLX_Stg2_TOFPaddleEndHit tW     = topTOF->getPaddleEndHit(HLX_Geometry_TOF::kWest);
     HLX_Stg2_TOFPaddleEndHit boreE  = borTOF->getPaddleEndHit(HLX_Geometry_TOF::kEast);
@@ -236,7 +276,79 @@ void AnalTOFSkel(TString infile, bool recalcChargeDivPos = false, bool recalcTim
     HLX_Stg2_TOFPaddleEndHit endHit[6] = {tE, tW, boreE, boreW, bE, bW};
     //cool, huh?
     
-    //get fees on paddle ends
+    ///following distilled down from SC code to correct signal for paddle thicknesses
+    //paddle locations:
+    double padx[3] = {
+      theGeom->fTOF.fTopLocX + theGeom->fTOF.fPaddleMetrology[toppadID]["xloc"],
+      theGeom->fTOF.fBorePaddleLocX + theGeom->fTOF.fPaddleMetrology[borpadID]["xloc"],
+      theGeom->fTOF.fBottomLocX + theGeom->fTOF.fPaddleMetrology[botpadID]["xloc"]
+    };
+    double pady[3] = {
+      theGeom->fTOF.fTopLocY + theGeom->fTOF.fPaddleMetrology[toppadID]["yloc"],
+      theGeom->fTOF.fBorePaddleLocY + theGeom->fTOF.fPaddleMetrology[borpadID]["yloc"],
+      theGeom->fTOF.fBottomLocY + theGeom->fTOF.fPaddleMetrology[botpadID]["yloc"]
+    };
+
+    // check if track hit each paddle; set thickness
+    double thck[3] = {10,10,10}; //mm, default thickness
+    double tolx[3] = {100., 303., 100.}; //mm
+    double toly[3] = {800., 303., 800.}; //mm
+    
+    //signals: These were corrected for pathlength (thickness) in TemplateAnal already, and now need to have that uncorrected before we can correct again here
+    double topSig = topTOF->getSignal();
+    double borSig = borTOF->getSignal();
+    double botSig = botTOF->getSignal();
+    double padSig[3] = {topSig, borSig, botSig};
+    double tcorr[3] = {1., 1., 1.};   // thickness correction factor to adjust the Z value as per impact location thickness
+    
+    //caclulate correction for paddle Signal by thickness:
+    // SC  Average scintillator thickness in mm, which was applied in pulse signal size normalization but which will have to be uncorrected back to raw
+    // to apply the correct thickness correction; order here is HELIX ordering (bottom 0-7, top 8-15, bore 16)
+    Double_t avgthick[17] = {
+      9.79,9.64,10.19,9.56,10.09,9.72,9.84,9.87,  // bottom
+      9.56,9.67,9.61,9.88,9.84,9.56,9.97,9.62,  // top
+      9.97  // bore
+    };
+
+    //a lamda to check to see if hit is inside paddle:
+    auto isInPaddle = [](double x, double xc, double tol) -> bool { 
+        return (x <= xc + tol) && (x >= xc - tol); 
+    };
+
+    for (int i=0; i<3; i++)
+    {
+      if (isInPaddle(tofX[i], padx[i], tolx[i]) && isInPaddle(tofY[i], pady[i], toly[i]))
+      {
+        hXYshift[padID[i]]->Fill(tofX[i]-padx[i],tofY[i]-pady[i]); 
+        double *padt2D = nullptr;
+        //from tofcal11:
+//        if (i==0) padt2D = &fCal.topt[padID[i]][0][0];
+//        if (i==2) padt2D = &fCal.bott[padID[i]-8][0][0];
+        //from tofcal12:
+        if (i==0 || i==2)
+        {
+          padt2D = &fCal.padt[padID[i]][0][0];
+          thck[i] = thickness(i, padt2D, (tofX[i]-padx[i])/10. + tolx[i]/10., (tofY[i]-pady[i])/10. + toly[i]/10.);  // positions in cm, not mm (/10.), and need to shift by 1/2 paddle dimension (because of thickness map for long paddles)
+        } 
+        if (i==1) //bore
+        {
+          padt2D = &fCal.boret[0][0][0]; //bore
+          thck[i] = thickness(i, padt2D, (tofX[i]-padx[i])/10. , (tofY[i]-pady[i])/10. );  // positions in cm, not mm (/10.); the BP does NOT need the 1/2 paddle shift
+        }
+      	hthck[padID[i]] -> Fill(thck[i]);        
+      }
+      tcorr[i] = avgthick[padID[i]] / thck[i];   // this tcorr factor will *multiply* the signal size
+    }
+    
+    /////////////////////////////////////////////////////
+    //FILL ALL HISTS AND PROFILES
+    /////////////////////////////////////////////////////
+    
+    ///TOF Beta and Charge
+    double timeDiff = botTOF->fTime - topTOF->fTime;
+    hTOFdT->Fill(timeDiff);
+
+    //paddle end fee hists
     //HLX: 0-7 lower, 8-15 upper, 16 is bore  
     for (int i=0; i<6; i++)
     {
@@ -264,117 +376,7 @@ void AnalTOFSkel(TString infile, bool recalcChargeDivPos = false, bool recalcTim
 //      cout << i << " " << paddleID << " " << endID << " " << dT << endl;
     }
     
-    ///TOF Beta and Charge
-    double timeDiff = botTOF->fTime - topTOF->fTime;
-    hTOFdT->Fill(timeDiff);
-
-    //////////////////////////////////////////////////////
-    //Collect info in shortcut arrays[3] by paddle:
-
-    ///ORDERING: TOP, BORE, BOTTOM
-
-    //HLX numbering:
-    int toppadID = topTOF->fTag.getPaddleID();
-    int borpadID = borTOF->fTag.getPaddleID();
-    int botpadID = botTOF->fTag.getPaddleID();
-    
-    //Watch this trick: set up arrays to avoid lots of repeated code.
-    int padID[3] = {toppadID, borpadID, botpadID};    
-    HLX_Stg2_TOFHit* tofHits[3] = {topTOF, borTOF, botTOF};  //not copies, so use pointer ->
-    double tofX[3]    = {tvars.ttofX, tvars.boreX,  tvars.btofX};
-    double tofY[3]    = {tvars.ttofY, tvars.boreY,  tvars.btofY};
-    double padPLC[3]  = {tvars.topPLC,tvars.borePLC,tvars.botPLC};
-
-    //get paddle center locations in order to normalize DCTY to paddle center
-    double padCenter[3] = {0.};
-    double padLength[3] = {0.};
-    for (int j=0; j<3; j++)
-    {
-      double west = tofHits[j]->fHitWest.getY();
-      double east = tofHits[j]->fHitEast.getY();
-      padCenter[j] = (west + east) / 2;
-      padLength[j] = (west - east);
-    }
-    
-    ///following distilled down from SC code to correct signal for paddle thicknesses
-    //paddle locations:
-    double padx[3] = {
-      theGeom->fTOF.fTopLocX + theGeom->fTOF.fPaddleMetrology[toppadID]["xloc"],
-      theGeom->fTOF.fBorePaddleLocX + theGeom->fTOF.fPaddleMetrology[borpadID]["xloc"],
-      theGeom->fTOF.fBottomLocX + theGeom->fTOF.fPaddleMetrology[botpadID]["xloc"]
-    };
-    double pady[3] = {
-      theGeom->fTOF.fTopLocY + theGeom->fTOF.fPaddleMetrology[toppadID]["yloc"],
-      theGeom->fTOF.fBorePaddleLocY + theGeom->fTOF.fPaddleMetrology[borpadID]["yloc"],
-      theGeom->fTOF.fBottomLocY + theGeom->fTOF.fPaddleMetrology[botpadID]["yloc"]
-    };
-
-    //a lamda to check to see if hit is inside paddle:
-    auto isInPaddle = [](double x, double xc, double tol) -> bool { 
-        return (x <= xc + tol) && (x >= xc - tol); 
-    };
-
-    // check if track hit each paddle; set thickness
-    double thck[3] = {10,10,10}; //mm, default thickness
-    double tolx[3] = {100., 303., 100.}; //mm
-    double toly[3] = {800., 303., 800.}; //mm
-    
-    for (int i=0; i<3; i++)
-    {
-      if (isInPaddle(tofX[i], padx[i], tolx[i]) && isInPaddle(tofY[i], pady[i], toly[i]))
-      {
-        hXYshift[padID[i]]->Fill(tofX[i]-padx[i],tofY[i]-pady[i]); 
-        double *padt2D = nullptr;
-        //from tofcal11:
-//        if (i==0) padt2D = &fCal.topt[padID[i]][0][0];
-//        if (i==2) padt2D = &fCal.bott[padID[i]-8][0][0];
-        //from tofcal12:
-        if (i==0 || i==2)
-        {
-          padt2D = &fCal.padt[padID[i]][0][0];
-          thck[i] = thickness(i, padt2D, (tofX[i]-padx[i])/10. + tolx[i]/10., (tofY[i]-pady[i])/10. + toly[i]/10.);  // positions in cm, not mm (/10.), and need to shift by 1/2 paddle dimension (because of thickness map for long paddles)
-        } 
-        if (i==1) //bore
-        {
-          padt2D = &fCal.boret[0][0][0]; //bore
-          thck[i] = thickness(i, padt2D, (tofX[i]-padx[i])/10. , (tofY[i]-pady[i])/10. );  // positions in cm, not mm (/10.); the BP does NOT need the 1/2 paddle shift
-        }
-      	hthck[padID[i]] -> Fill(thck[i]);
-      }
-    }
-    
-    // SC  Average scintillator thickness in mm, which was applied in pulse signal size normalization but which will have to be uncorrected back to raw
-    // to apply the correct thickness correction; order here is HELIX ordering (bottom 0-7, top 8-15, bore 16)
-    Double_t avgthick[17] = {
-      9.79,9.64,10.19,9.56,10.09,9.72,9.84,9.87,  // bottom
-      9.56,9.67,9.61,9.88,9.84,9.56,9.97,9.62,  // top
-      9.97  // bore
-    };
-
-    
-    
-    //signals: Didn't these get corrected for pathlength in TemplateAnal already, and now need to have that uncorrected before we can correct again here?
-    double topSig = topTOF->getSignal();
-    double botSig = botTOF->getSignal();
-    double borSig = borTOF->getSignal();
-
-    double ttofZ  = pow(topSig  / tvars.topPLC, 1.0/1.7);
-    double boreZ  = pow(borSig / tvars.borePLC, 1.0/1.7);
-    double btofZ  = pow(botSig  / tvars.botPLC, 1.0/1.7);
-    double allZ   = (ttofZ+boreZ+btofZ)/3.;
-    double tbZ    = (ttofZ+btofZ)/2.;
-
-    double ttofZSC  = topSig  / tvars.topPLC;
-    double boreZSC  = borSig / tvars.borePLC;
-    double btofZSC  = botSig  / tvars.botPLC;
-    double allZSC   = sqrt((ttofZSC+boreZSC+btofZSC)/3.);
-    double allZSCcorr = (allZSC - 0.2499) / 0.8385;
-    double tbZSC    = sqrt((ttofZSC+btofZSC)/2.);
-    
-    
-    
-    /////////////////////////////////////////////////////
-    //fill all paddle-based hists and profiles
+    //Fill hists by paddle:
     for (int j=0; j<3; j++)
     {
       //do recalcs here if requested to check new parameters:
@@ -394,11 +396,16 @@ void AnalTOFSkel(TString infile, bool recalcChargeDivPos = false, bool recalcTim
         timeDiffPos = fCal.TDm[padID[j]] * tofHits[j]->fTimeDiff + fCal.TDb[padID[j]]; // = DCTY - center
         timeDiffPos += padCenter[j];
       }
-    
+      
+      //extract signal, correct for scintillator thickness and pathlength
+      padSig[j] *= tcorr[j];
+      padSig[j] /= padPLC[j];
+
       //fill histos:
-      hChargeDivPos [padID[j]]->Fill(tofY[j]/*-padCenter[j]*/,    chargeDivPos);  //consistent with calculation of timeDiffPos and chargeDivPos above and in TemplateAnaly
-      hTimeDiffPos  [padID[j]]->Fill(tofY[j]/*-padCenter[j]*/,    timeDiffPos);
-      hPosDiff      [padID[j]]->Fill(tofY[j]/*-padCenter[j]*/,    timeDiffPos - chargeDivPos);
+      hChargeDivPos [padID[j]]->Fill(tofY[j]-padCenter[j],    chargeDivPos-padCenter[j]);  //consistent with calculation of timeDiffPos and chargeDivPos above and in TemplateAnaly
+      hTimeDiffPos  [padID[j]]->Fill(tofY[j]-padCenter[j],    timeDiffPos-padCenter[j]);
+      hSignal       [padID[j]]->Fill(tofY[j]-padCenter[j],    padSig[j]);
+      hPosDiff      [padID[j]]->Fill(tofY[j]-padCenter[j],    timeDiffPos - chargeDivPos);
       hZdT          [padID[j]]->Fill(timeDiffPos,                 chargeDivPos);
       pZdT          [padID[j]]->Fill(timeDiffPos,                 chargeDivPos);
       hZdct         [padID[j]]->Fill(tofHits[j]->fChargeDivFrac,  tofY[j]-padCenter[j]);
@@ -429,9 +436,19 @@ void AnalTOFSkel(TString infile, bool recalcChargeDivPos = false, bool recalcTim
           double tdiff = tofHits[j]->fTimeDiffPos - (tofY[j]-padCenter[j]);
           hTW[SCfeeID]->Fill(feeSignal, tdiff);
         }
-      }
+      } //end of end loop
       
-    }
+    } //end of paddle loop
+    
+    //charge determination:    
+    double allZSC2   = sqrt((padSig[0]+padSig[1]+padSig[2])/3.); 
+    double allZSCcorr2 = (allZSC2 - 0.2499) / 0.8385;
+    double tbZSC2    = sqrt((padSig[0]+padSig[2])/2.);
+
+    hallZSC2 -> Fill(allZSC2);
+    hallZSCcorr2 -> Fill(allZSCcorr2);
+    htbZSC2 -> Fill(tbZSC2);
+    hBvT->Fill(padSig[2], padSig[0]); //bottom signal on x; top signal on y
 
   } //end of event loop
   
@@ -451,9 +468,11 @@ void AnalTOFSkel(TString infile, bool recalcChargeDivPos = false, bool recalcTim
     exit(0);
   }
   
+  //paddle hists:
   for (int i=0; i<17; i++)
   {
     hChargeDivPos[i]->Write();
+    hSignal[i]      ->Write();
     hTimeDiffPos[i] ->Write();
     hPosDiff[i]     ->Write();    
     hZdT[i]         ->Write();
@@ -470,6 +489,7 @@ void AnalTOFSkel(TString infile, bool recalcChargeDivPos = false, bool recalcTim
     hthck[i]        ->Write();
   }
 
+  //end fees:
   for (int i=0;i<17;i++)
   {
     for (int j=0;j<2;j++)
@@ -478,12 +498,17 @@ void AnalTOFSkel(TString infile, bool recalcChargeDivPos = false, bool recalcTim
     }
   }
 
+  //TW:
   for (int i=0;i<72;i++)
   {
     hTW[i]->Write();
   }
   
+  hallZSC2->Write();
+  hallZSCcorr2->Write();
+  htbZSC2->Write();
   hTOFdT->Write();
+  hBvT->Write();
  
   opf->Close();
 

@@ -7,6 +7,7 @@
 //bool loadSCTOFCalibsv12(string ipfName = kInputTofcalName) // Open INPUT SCTOF parameter file v12 and after (root TTree organized by run number). Only called once.
 //void fillFitSlopeIntercepts(int runNum) //fill the slopes and intercepts in the new ttree by reading from files. Input is run number.
 //void modifyTofcal() //one time pass through all entries and writing out to a new tofcal tree with modified branches and/or values
+//void adjustSCTOFCalibsForRun(PSUTOFCalibs oldCal) //do adjustment of bad parameters inside fCal for run
 
 //Deprecated:
 //bool loadSCTOFCalibs(string ipfName = kInputTofcalName) // Open INPUT SCTOF parameter file v11 and before (root TTree organized by run number). Only called once.
@@ -17,8 +18,8 @@
 //Global shit:
 /////  SET THESE FOR READING AND TRANSLATION!! ////
 //Set up input and output tofcal ttree
-string kInputTofcalName = "tofcal12.root";
-string kOutputTofcalName = "tofcal12.1.root";
+string kInputTofcalName = "tofcal12.1.root";
+string kOutputTofcalName = "tofcal12.2.root";
 
 
 //TREE VARIABLES: Saved in structure for eases of copying
@@ -44,8 +45,8 @@ struct PSUTOFCalibs {
 
 TFile*        fFile;          //INPUT TFile with Calibs
 TTree*        fTOFcal = {};   //INPUT calibration parameters
-PSUTOFCalibs fRtCal;         //global struct with INPUT variables that ROOT points to
-PSUTOFCalibs fCal;           //global struct for modified OUTPUT calib values
+PSUTOFCalibs  fRtCal;         //global struct with INPUT variables that ROOT points to
+PSUTOFCalibs  fCal;           //global struct for modified OUTPUT calib values
 
 TFile*        fOutFile;           //OUPUT TFile with Calibs
 TTree*        fOUTTOFcal = {};    //OUTPUT calibration parameters
