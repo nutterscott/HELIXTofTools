@@ -80,7 +80,7 @@ void MakeSkeletorPlotsBatch(TString fname, TString runNum="", TString TOFtype=""
   cout << "Writing " << fout << endl;
 
   TCanvas** cv;
-  cv = new TCanvas*[15];
+  cv = new TCanvas*[20];
   int nx = 4, ny = 4;
   int cknt=0;
   int hknt=1;
