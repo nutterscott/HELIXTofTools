@@ -10,6 +10,9 @@
 // where filelist.txt is the list of run numbers, such as 2024_Kiruna_Float_Boff.txt, to chain and process, and all.AnalTOFSkel.root will be
 // the output file.
 
+//make the chain global so you can access it from the command line:
+TChain chain("toft");
+
 void AnalTOFSkelList(const char *listName = "filelist.txt",
                     const char *outName  = "combined.AnalTOFSkel.root")
 {
@@ -23,7 +26,7 @@ void AnalTOFSkelList(const char *listName = "filelist.txt",
     return;
   }
 
-  TChain chain("toft");
+//  TChain chain("toft");
   std::string line;
   int nFiles = 0;
 
