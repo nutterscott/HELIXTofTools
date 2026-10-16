@@ -22,6 +22,7 @@ void AnalTOFSkelTree(TTree *toft, const TString &outfile, bool recalcChargeDivPo
   /// Get the geometry singleton - it will autoload the files.
   auto theGeom = HLX_Geometry::getInstance();
   
+  ////////////////////////////////////////
   /// INPUT skeletor TOF info
 //  vector<HLX_Stg2_TOFHit>* TOFHits = nullptr; //top, bore, bottom
   HLX_Stg2_TOFHit* topTOF = new HLX_Stg2_TOFHit();
@@ -67,11 +68,8 @@ void AnalTOFSkelTree(TTree *toft, const TString &outfile, bool recalcChargeDivPo
   //output root file for histograms
   TFile *opf = TFile::Open(outfile, "RECREATE");
 
-  //  TString outfile = infile;
-  //  int insertLoc = infile.Length()-4;
-  //  outfile.Insert(insertLoc,"AnalTOFSkel.");
-  //  TFile* opf = TFile::Open(outfile.Data(), "RECREATE");
-  if(!opf || !opf->IsOpen() || opf->IsZombie()){
+  if(!opf || !opf->IsOpen() || opf->IsZombie())
+  {
     cout << "Could not open file " << outfile << endl;
     exit(0);
   }
@@ -251,7 +249,8 @@ void AnalTOFSkelTree(TTree *toft, const TString &outfile, bool recalcChargeDivPo
   auto htbZSC2  = new TH1D("htbZSC2" , "Z t+b (SC), t. corr." , 240, 0, 10);
 
   //charge determination using DCT track for cos(zenith) and thickness
-  TH2D* hBvT        = new TH2D("hBvT", "Signal: Bottom vs top;Top signal (MIP);Bottom signal (MIP)",200,0,20,200,0,20);
+  TH2D* hBvT        = new TH2D("hBvT", "Signal: Top vs bottom;Bottom signal (MIP);Top signal (MIP)",240,0,12,240,0,12);
+  TH2D* hZvR        = new TH2D("hZvR", "Signal: Zave vs R (GV);Rigidity (GV);Zave (MIP)",600,0,30,240,0,12);
 
   //time of flight:  
   auto hTOFdT   = new TH1D("hTOFdT" , "dTOF;ns" , 1000, -20, 20);
@@ -361,8 +360,8 @@ void AnalTOFSkelTree(TTree *toft, const TString &outfile, bool recalcChargeDivPo
       if (isInPaddle(tofX[i], padx[i], tolx[i]) && isInPaddle(tofY[i], pady[i], toly[i]))
       {
         hXYshift[padID[i]]->Fill(tofX[i]-padx[i],tofY[i]-pady[i]);
-	hYXshift[padID[i]]->Fill(tofY[i]-pady[i],tofX[i]-padx[i]); 
-	pYXshift[padID[i]]->Fill(tofY[i]-pady[i],tofX[i]-padx[i]);
+        hYXshift[padID[i]]->Fill(tofY[i]-pady[i],tofX[i]-padx[i]); 
+        pYXshift[padID[i]]->Fill(tofY[i]-pady[i],tofX[i]-padx[i]);
         double *padt2D = nullptr;
         //from tofcal11:
 //        if (i==0) padt2D = &fCal.topt[padID[i]][0][0];
@@ -485,160 +484,99 @@ void AnalTOFSkelTree(TTree *toft, const TString &outfile, bool recalcChargeDivPo
     
     //charge determinations:  SC 10/12/2016   Lots of new plots    
 
-    double ttofZo  = pow(topSig * coszen[padID[0]], 1.0/1.7);
-    double btofZo  = pow(botSig * coszen[padID[2]], 1.0/1.7);
-    double boreZo  = pow(borSig * coszen[padID[0]], 1.0/1.7);  // use top paddle coszen
+    double expo1 = 1.0/1.7;   // nominal power to use in calculating Z
+    double expo2 = 0.5;       // SC uses sqrt
+    
+    double ttofZo  = pow(topSig * coszen[padID[0]], expo1);
+    double btofZo  = pow(botSig * coszen[padID[2]], expo1);
+    double boreZo  = pow(borSig * coszen[padID[0]], expo1);  // use top paddle coszen
     //    cout << "ttofZo, btofZo, boreZo: " << ttofZo << " " << btofZo << " " << boreZo << endl;
     double allZo   = (ttofZo+boreZo+btofZo)/3.;
     double tbZo    = (ttofZo+btofZo)/2.;
     //    cout << "allZo, tbZo: " << allZo << " " << tbZo << endl;
-    hallZo -> Fill(allZo);
-    htbZo -> Fill(tbZo);
 
-    double ttofZ  = pow(topSig / tvars.topPLC, 1.0/1.7);
-    double btofZ  = pow(botSig / tvars.botPLC, 1.0/1.7);
-    double boreZ  = pow(borSig / tvars.borePLC, 1.0/1.7);
-    double allZ   = (ttofZ+boreZ+btofZ)/3.;
-    double tbZ    = (ttofZ+btofZ)/2.;
-    hallZ -> Fill(allZ);
-    htbZ -> Fill(tbZ);
-    
     double ttofZSCo  = topSig * coszen[padID[0]];
     double btofZSCo  = botSig * coszen[padID[2]];
     double boreZSCo  = borSig * coszen[padID[0]];  // use top paddle coszen
+    double allZSCo   = pow((ttofZSCo+boreZSCo+btofZSCo)/3.,expo2);   // SC   original
     //    double allZSCo   = sqrt((ttofZSCo+boreZSCo+btofZSCo)/3.);   // SC   original way
-    double allZSCo   = (sqrt(ttofZSCo)+sqrt(boreZSCo)+sqrt(btofZSCo))/3.;  // SC  this seems to give better Z res.
+    //      double allZSCo   = (sqrt(ttofZSCo)+sqrt(boreZSCo)+sqrt(btofZSCo))/3.;  // SC  this seems to give better Z res.
     double allZSCcorro = (allZSCo - 0.2499) / 0.8385;
+    double tbZSCo    = pow((ttofZSCo+btofZSCo)/2.,expo2);   //SC   original
     //    double tbZSCo    = sqrt((ttofZSCo+btofZSCo)/2.);   //SC   original way
-    double tbZSCo    = (sqrt(ttofZSCo)+sqrt(btofZSCo))/2.;   // SC  this seems to give better Z res.
-    hallZSCo -> Fill(allZSCo);
-    hallZSCcorro -> Fill(allZSCcorro);
-    htbZSCo -> Fill(tbZSCo);
+    //      double tbZSCo    = (sqrt(ttofZSCo)+sqrt(btofZSCo))/2.;   // SC  this seems to give better Z res.
+
+      if (abs(topSig*coszen[padID[0]]-botSig*coszen[padID[2]])<0.4 ) { // apply top/bottom tight charge agreement
+      //  && abs(borSig*coszen[padID[0]]-botSig*coszen[padID[2]])<0.5 ) {  
+      hallZo -> Fill(allZo);
+      htbZo -> Fill(tbZo);
+
+      hallZSCo -> Fill(allZSCo);
+      hallZSCcorro -> Fill(allZSCcorro);
+      htbZSCo -> Fill(tbZSCo);
+    }
+
+    double ttofZ  = pow(topSig / tvars.topPLC, expo1);
+    double btofZ  = pow(botSig / tvars.botPLC, expo1);
+    double boreZ  = pow(borSig / tvars.borePLC, expo1);
+    double allZ   = (ttofZ+boreZ+btofZ)/3.;
+    double tbZ    = (ttofZ+btofZ)/2.;
 
     double ttofZSC  = topSig / tvars.topPLC;
     double btofZSC  = botSig / tvars.botPLC;
     double boreZSC  = borSig / tvars.borePLC;
+    double allZSC   = pow((ttofZSC+boreZSC+btofZSC)/3.,expo2);   // SC  original
     //    double allZSC   = sqrt((ttofZSC+boreZSC+btofZSC)/3.);   // SC  original way
-    double allZSC   = (sqrt(ttofZSC)+sqrt(boreZSC)+sqrt(btofZSC))/3.;   // SC  better Z res. ?
+    //      double allZSC   = (sqrt(ttofZSC)+sqrt(boreZSC)+sqrt(btofZSC))/3.;   // SC  better Z res. ?
     double allZSCcorr = (allZSC - 0.2499) / 0.8385;
+    double tbZSC    = pow((ttofZSC+btofZSC)/2.,expo2);   // SC  original
     //    double tbZSC    = sqrt((ttofZSC+btofZSC)/2.);   // SC  original way
-    double tbZSC    = (sqrt(ttofZSC)+sqrt(btofZSC))/2.;   // SC  better Z re. ?
-    hallZSC -> Fill(allZSC);
-    hallZSCcorr -> Fill(allZSCcorr);
-    htbZSC -> Fill(tbZSC);
-    
+    //      double tbZSC    = (sqrt(ttofZSC)+sqrt(btofZSC))/2.;   // SC  better Z re. ?
+
+    if (abs(topSig/tvars.topPLC-botSig/tvars.botPLC)<0.4) {   // apply top/bottom tight charge agreement
+      // && abs(borSig/tvars.borePLC-botSig/tvars.botPLC)<0.5) {  
+      hallZ -> Fill(allZ);
+      htbZ -> Fill(tbZ);
+      
+      hallZSC -> Fill(allZSC);
+      hallZSCcorr -> Fill(allZSCcorr);
+      htbZSC -> Fill(tbZSC);
+    }
+	
     // SC Thickness corrected Z signals
-    double ttofZ2  = pow(topSig / tvars.topPLC * tcorr[0], 1.0/1.7);
-    double btofZ2  = pow(botSig / tvars.botPLC * tcorr[2], 1.0/1.7);
-    double boreZ2  = pow(borSig / tvars.borePLC * tcorr[1], 1.0/1.7);
+    double ttofZ2  = pow(topSig / tvars.topPLC * tcorr[0], expo1);
+    double btofZ2  = pow(botSig / tvars.botPLC * tcorr[2], expo1);
+    double boreZ2  = pow(borSig / tvars.borePLC * tcorr[1], expo1);
     double allZ2   = (ttofZ2+boreZ2+btofZ2)/3.;
     double tbZ2    = (ttofZ2+btofZ2)/2.;
-    hallZ2 -> Fill(allZ2);
-    htbZ2 -> Fill(tbZ2);
 
     double ttofZSC2  = topSig / tvars.topPLC * tcorr[0];
     double btofZSC2  = botSig / tvars.botPLC * tcorr[2];
     double boreZSC2  = borSig / tvars.borePLC * tcorr[1];
+    double allZSC2   = pow((ttofZSC2+boreZSC2+btofZSC2)/3.,expo2);  // SC  original
     //    double allZSC2   = sqrt((ttofZSC2+boreZSC2+btofZSC2)/3.);  // SC  original way
-    double allZSC2   = (sqrt(ttofZSC2)+sqrt(boreZSC2)+sqrt(btofZSC2))/3.;   // SC  better Z res. ?
+    //    double allZSC2   = (sqrt(ttofZSC2)+sqrt(boreZSC2)+sqrt(btofZSC2))/3.;   // SC  better Z res. ?
     double allZSCcorr2 = (allZSC2 - 0.2499) / 0.8385;
+    double tbZSC2    = pow((ttofZSC2+btofZSC2)/2.,expo2);   // SC   original
     //    double tbZSC2    = sqrt((ttofZSC2+btofZSC2)/2.);   // SC   original way
-    double tbZSC2    = (sqrt(ttofZSC2)+sqrt(btofZSC2))/2.;   // SC  better Z res. ?
-    hallZSC2 -> Fill(allZSC2);
-    hallZSCcorr2 -> Fill(allZSCcorr2);
-    htbZSC2 -> Fill(tbZSC2);
+    //    double tbZSC2    = (sqrt(ttofZSC2)+sqrt(btofZSC2))/2.;   // SC  better Z res. ?
 
-    //    double allZSC2   = sqrt((padSig[0]+padSig[1]+padSig[2])/3.); 
-    //    double allZSCcorr2 = (allZSC2 - 0.2499) / 0.8385;
-    //    double tbZSC2    = sqrt((padSig[0]+padSig[2])/2.);
+    if (abs(topSig/tvars.topPLC*tcorr[0]-botSig/tvars.botPLC*tcorr[2])<0.4 ) { // apply top/bottom tight charge agreement
+      // && abs(borSig/tvars.borePLC*tcorr[1]-botSig/tvars.botPLC*tcorr[2])<0.5) {  
+      hallZ2 -> Fill(allZ2);
+      htbZ2 -> Fill(tbZ2);
 
-    //    hallZSC2 -> Fill(allZSC2);
-    //    hallZSCcorr2 -> Fill(allZSCcorr2);
-    //    htbZSC2 -> Fill(tbZSC2);
-    hBvT->Fill(padSig[2], padSig[0]); //bottom signal on x; top signal on y
+      hallZSC2 -> Fill(allZSC2);
+      hallZSCcorr2 -> Fill(allZSCcorr2);
+      htbZSC2 -> Fill(tbZSC2);
+      hZvR->Fill(rig, allZSC2); //rigidity on x; Zave on y
+    }
+    
+    hBvT->Fill(pow(padSig[2],expo2), pow(padSig[0],expo2)); //bottom signal on x; top signal on y
 
   } //end of event loop
   
   cout << "End of event loop" << endl;
-/*    
-  ///////////////////////////////////////////
-  //output root file for histograms
-
- //do any fits of profile hists here before writing hists, or in post-anal routine, with screen display.
-
-  TFile *opf = TFile::Open(outfile, "RECREATE");
-
-  //  TString outfile = infile;
-  //  int insertLoc = infile.Length()-4;
-  //  outfile.Insert(insertLoc,"AnalTOFSkel.");
-  //  TFile* opf = TFile::Open(outfile.Data(), "RECREATE");
-  if(!opf || !opf->IsOpen() || opf->IsZombie()){
-    cout << "Could not open file " << outfile << endl;
-    exit(0);
-  }
-  */
-  /*
-  //paddle hists:
-  for (int i=0; i<17; i++)
-  {
-    hChargeDivPos[i]->Write();
-    hSignal[i]      ->Write();
-    hTimeDiffPos[i] ->Write();
-    hPosDiff[i]     ->Write();    
-    hZdT[i]         ->Write();
-    pZdT[i]         ->Write();
-    hZdct[i]        ->Write();
-    pZdct[i]        ->Write();
-    hTdct[i]        ->Write();
-    pTdct[i]        ->Write();
-    //SC:
-    hXYshift[i]     ->Write();
-    hYXshift[i]     ->Write();
-    pYXshift[i]     ->Write();
-    hXY[i]          ->Write();
-    hXYChi[i]       ->Write();
-    hXYHitC[i]      ->Write();
-    hthck[i]        ->Write();
-  }
-
-  //end fees:
-  for (int i=0;i<17;i++)
-  {
-    for (int j=0;j<2;j++)
-    {
-      hEnddT[i*2+j]->Write();
-    }
-  }
-
-  //TW:
-  for (int i=0;i<72;i++)
-  {
-    hTW[i]->Write();
-  }
-  
-  hTOFdT->Write();
-
-  //  hallZSC2->Write();
-  //  hallZSCcorr2->Write();
-  //  htbZSC2->Write();
-  hallZo->Write();
-  htbZo->Write();
-  hallZ->Write();
-  htbZ->Write();
-  hallZSCo->Write();
-  hallZSCcorro->Write();
-  htbZSCo->Write();
-  hallZSC->Write();
-  hallZSCcorr->Write();
-  htbZSC->Write();
-  hallZ2->Write();
-  htbZ2->Write();
-  hallZSC2->Write();
-  hallZSCcorr2->Write();
-  htbZSC2->Write();
-
-  hBvT->Write();
-*/ 
   opf->Write();
   opf->Close();
 
