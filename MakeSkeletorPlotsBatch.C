@@ -80,7 +80,7 @@ void MakeSkeletorPlotsBatch(TString fname, TString runNum="", TString TOFtype=""
   cout << "Writing " << fout << endl;
 
   TCanvas** cv;
-  cv = new TCanvas*[20];
+  cv = new TCanvas*[25];
   int nx = 4, ny = 4;
   int cknt=0;
   int hknt=1;
@@ -88,6 +88,8 @@ void MakeSkeletorPlotsBatch(TString fname, TString runNum="", TString TOFtype=""
   gStyle->SetOptStat(0);
   gStyle->SetOptLogy();
   gStyle->SetOptFit(1111);
+  gStyle->SetPadTickX(1);
+  gStyle->SetPadTickY(1);
   
   TString cname;
 
@@ -668,6 +670,33 @@ void MakeSkeletorPlotsBatch(TString fname, TString runNum="", TString TOFtype=""
   DrawDownArrowMm(avgthick[16], 0.0, 200, 200);
 
   cknt++;
+
+  ////////////////////////
+  // rigidity
+  cname = TString::Format("%s%d","c",cknt);
+  cv[cknt] = new TCanvas(cname.Data(),cname.Data(),1);
+  gStyle->SetOptLogy(0);
+  gStyle->SetOptLogz(1);
+  gStyle->SetOptStat(11); //# of entries and title only
+  
+  TH2D* hRvZ = (TH2D*)f1->Get("hRvZ");
+  hRvZ->Draw();
+  
+  cknt++;
+
+  ////////////////////////
+  // bottom vs top Z
+  cname = TString::Format("%s%d","c",cknt);
+  cv[cknt] = new TCanvas(cname.Data(),cname.Data(),1);
+  gStyle->SetOptLogy(0);
+  gStyle->SetOptLogz(1);
+  gStyle->SetOptStat(11); //# of entries and title only
+  
+  TH2D* hBvT = (TH2D*)f1->Get("hBvT");
+  hBvT->Draw();
+  
+  cknt++;
+
 
   //////////////
   // Write all canvases to pdf

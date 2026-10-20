@@ -15,9 +15,10 @@
 //include PSU thickness tools for paddle thicknesses
 #include "PSUThicknessTools.C"
 
-//#include "SliceAndDice.C"
+//include signal response correction functions
+#include "ResponseCorrTools.C"
 
-void AnalTOFSkelTree(TTree *toft, const TString &outfile, bool recalcChargeDivPos = false, bool recalcTimeDiffPos = false )
+void AnalTOFSkelTree(TTree *toft, const TString &outfile, bool recalcChargeDivPos = true, bool recalcTimeDiffPos = true )
 {
   /// Get the geometry singleton - it will autoload the files.
   auto theGeom = HLX_Geometry::getInstance();
@@ -64,6 +65,15 @@ void AnalTOFSkelTree(TTree *toft, const TString &outfile, bool recalcChargeDivPo
   //set up OUTPUT tofcal calibration  
 //  createSCTOFCalibs();
   
+  //load response correction parameters:
+  //for sqrt(signal) based corrections
+//  string kInputResponseCorrFileName = "combined.Bon.sqrt.PadSigTGraphFits.txt";
+//  if (outfile.Contains("Boff")) kInputResponseCorrFileName = "combined.Boff.sqrt.PadSigTGraphFits.txt";
+  //for sqrt(signal) based corrections
+  string kInputResponseCorrFileName = "combined.Bon.PadSigTGraphFits.txt";
+  if (outfile.Contains("Boff")) kInputResponseCorrFileName = "combined.Boff.PadSigTGraphFits.txt";
+  readResponseCorr(kInputResponseCorrFileName);
+  
   ///////////////////////////////////////////
   //output root file for histograms
   TFile *opf = TFile::Open(outfile, "RECREATE");
@@ -86,6 +96,8 @@ void AnalTOFSkelTree(TTree *toft, const TString &outfile, bool recalcChargeDivPo
   hChargeDivPos     = new TH2D*[17];
   TH2D** hSignal;                       // Charge (getSignal()) vs DCTY for all paddles
   hSignal           = new TH2D*[17];
+  TH2D** hChg;                       // Charge (getSignal()) vs DCTY for all paddles
+  hChg           = new TH2D*[17];
   TH2D** hTimeDiffPos;                  //position from end to end time difference 
   hTimeDiffPos      = new TH2D*[17];
   TH2D** hPosDiff;                      //comparison of position from charge division and time diff
@@ -132,8 +144,13 @@ void AnalTOFSkelTree(TTree *toft, const TString &outfile, bool recalcChargeDivPo
     
     TString hname1   = TString::Format("%s%d","hSignal",i);
     TString htitle1  = TString::Format("%s%d%s","fSignal vs DCTY, paddle",i,";DCTY (mm);Signal (MIPs)");
-    if (i<16) hSignal[i]      = new TH2D(hname1.Data(),htitle1.Data(),50,-800,800, 400,0,20);
-    else      hSignal[i]      = new TH2D(hname1.Data(),htitle1.Data(),50,-300,300, 400,0,20);
+    if (i<16) hSignal[i]      = new TH2D(hname1.Data(),htitle1.Data(),50,-800,800, 800,0,20);
+    else      hSignal[i]      = new TH2D(hname1.Data(),htitle1.Data(),50,-300,300, 800,0,20);
+    
+    hname1   = TString::Format("%s%d","hChg",i);
+    htitle1  = TString::Format("%s%d%s","Chg vs DCTY, paddle",i,";DCTY (mm);Chg (Z))");
+    if (i<16) hChg[i]      = new TH2D(hname1.Data(),htitle1.Data(),50,-800,800, 800,0,20);
+    else      hChg[i]      = new TH2D(hname1.Data(),htitle1.Data(),50,-300,300, 800,0,20);
     
     TString hname2  = TString::Format("%s%d","hPosDiff",i);
     TString htitle2 = TString::Format("%s%d%s","Position diff (fTimeDiffPos-fChargeDivPos) vs DCTY, paddle",i,";DCTY (mm);Pos diff (mm)");
@@ -249,7 +266,7 @@ void AnalTOFSkelTree(TTree *toft, const TString &outfile, bool recalcChargeDivPo
   auto htbZSC2  = new TH1D("htbZSC2" , "Z t+b (SC), t. corr." , 240, 0, 10);
 
   //charge determination using DCT track for cos(zenith) and thickness
-  TH2D* hBvT        = new TH2D("hBvT", "Signal: Top vs bottom;Bottom signal (MIP);Top signal (MIP)",240,0,12,240,0,12);
+  TH2D* hBvT        = new TH2D("hBvT", "Signal: Bottom vs top;Top signal (MIP);Bottom signal (MIP)",240,0,12,240,0,12);
   TH2D* hZvR        = new TH2D("hZvR", "Signal: Zave vs R (GV);Rigidity (GV);Zave (MIP)",600,0,30,240,0,12);
 
   //time of flight:  
@@ -335,6 +352,7 @@ void AnalTOFSkelTree(TTree *toft, const TString &outfile, bool recalcChargeDivPo
     double borSig = borTOF->getSignal();
     double botSig = botTOF->getSignal();
     double padSig[3] = {topSig, borSig, botSig};
+    double chg[3] = {1., 1., 1.};
     double tcorr[3] = {1., 1., 1.};   // thickness correction factor to adjust the Z value as per impact location thickness
     
     //caclulate correction for paddle Signal by thickness:
@@ -440,14 +458,19 @@ void AnalTOFSkelTree(TTree *toft, const TString &outfile, bool recalcChargeDivPo
       }
       
       //extract signal, correct for scintillator thickness and pathlength
-      padSig[j] *= tcorr[j];
-      padSig[j] /= padPLC[j];
+      padSig[j] *= tcorr[j];   //REMOVE AFTER AVG THICKNESS CORRECTION REMOVED FROM TOF TEMPLATEANAL STG2 CODE
+      padSig[j] /= padPLC[j];   //correct for pathlength
+      padSig[j] *= fCal.mpv[8]/fCal.mpv[0];   //correct for getting the wrong normalization fee.
+      padSig[j] /= responseCorr(padID[j],tofY[j]-padCenter[j]);   //correct for response along paddle length
+      chg[j]     = sqrt(padSig[j]);
+//      chg[j] = sqrt(padSig[j])/responseCorr(padID[j],tofY[j]-padCenter[j]);
 
       //fill histos:
-      hChargeDivPos [padID[j]]->Fill(tofY[j]-padCenter[j],    chargeDivPos-padCenter[j]);  //consistent with calculation of timeDiffPos and chargeDivPos above and in TemplateAnaly
-      hTimeDiffPos  [padID[j]]->Fill(tofY[j]-padCenter[j],    timeDiffPos-padCenter[j]);
-      hSignal       [padID[j]]->Fill(tofY[j]-padCenter[j],    padSig[j]);
-      hPosDiff      [padID[j]]->Fill(tofY[j]-padCenter[j],    timeDiffPos - chargeDivPos);
+      hChargeDivPos [padID[j]]->Fill(tofY[j]-padCenter[j],        chargeDivPos-padCenter[j]);  //consistent with calculation of timeDiffPos and chargeDivPos above and in TemplateAnaly
+      hTimeDiffPos  [padID[j]]->Fill(tofY[j]-padCenter[j],        timeDiffPos-padCenter[j]);
+      hSignal       [padID[j]]->Fill(tofY[j]-padCenter[j],        padSig[j]);
+      hChg          [padID[j]]->Fill(tofY[j]-padCenter[j],        chg[j]);
+      hPosDiff      [padID[j]]->Fill(tofY[j]-padCenter[j],        timeDiffPos - chargeDivPos);
       hZdT          [padID[j]]->Fill(timeDiffPos,                 chargeDivPos);
       pZdT          [padID[j]]->Fill(timeDiffPos,                 chargeDivPos);
       hZdct         [padID[j]]->Fill(tofHits[j]->fChargeDivFrac,  tofY[j]-padCenter[j]);
@@ -572,7 +595,7 @@ void AnalTOFSkelTree(TTree *toft, const TString &outfile, bool recalcChargeDivPo
       hZvR->Fill(rig, allZSC2); //rigidity on x; Zave on y
     }
     
-    hBvT->Fill(pow(padSig[2],expo2), pow(padSig[0],expo2)); //bottom signal on x; top signal on y
+    hBvT->Fill(pow(padSig[0],expo2), pow(padSig[2],expo2)); //bottom signal on y; top signal on x
 
   } //end of event loop
   
