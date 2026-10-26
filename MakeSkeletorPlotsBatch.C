@@ -48,17 +48,15 @@ void DrawDownArrowMm(double xData,
   gPad->Update();
 }
 
-void MakeSkeletorPlotsBatch(TString fname, TString runNum="", TString TOFtype="", bool writeFits = true)
+void MakeSkeletorPlotsBatch(TString fname, TString TOFtype="", bool writeFits = false)
 {
   
   //Examples:
   //fname = "/data/skeletor/skeletor.14802.AnalTOFSkel.root"
-  //runNum="14802"
   //TOFtype="GV" or "KS" or blank
   
   
   cout << "Opening file name = " << fname << endl;
-  cout << "Run number: " << runNum << endl;
   cout << "TOFtype: " << TOFtype << endl;
   if (TOFtype != "" ) TOFtype += ".";
   
@@ -75,7 +73,6 @@ void MakeSkeletorPlotsBatch(TString fname, TString runNum="", TString TOFtype=""
   baseName.ReplaceAll("skeletor.","MakeSkeletorPlotsBatch.");
   baseName.ReplaceAll("AnalTOFSkel.","");
   baseName.ReplaceAll(".root",".pdf");
-//  TString fout = baseName+TOFtype+runNum+".pdf";
   TString fout = baseName;
   cout << "Writing " << fout << endl;
 
@@ -93,6 +90,138 @@ void MakeSkeletorPlotsBatch(TString fname, TString runNum="", TString TOFtype=""
   
   TString cname;
 
+  // SC   10/12/2026    Charge distributions, first fit Landaus to all Z=1 peaks
+
+  TH1D *hallZo = nullptr;
+  f1->GetObject("hallZo", hallZo);
+  hallZo->Fit("landau","","R",0.8,1.15);
+
+  TH1D *htbZo = nullptr;
+  f1->GetObject("htbZo", htbZo);
+  htbZo->Fit("landau","","R",0.8,1.2);
+
+  TH1D *hallZSCo = nullptr;
+  f1->GetObject("hallZSCo", hallZSCo);
+  hallZSCo->Fit("landau","","R",0.8,1.15);
+
+  TH1D *hallZSCcorro = nullptr;
+  f1->GetObject("hallZSCcorro", hallZSCcorro);
+  hallZSCcorro->Fit("landau","","R",0.7,1.2);
+
+  TH1D *htbZSCo = nullptr;
+  f1->GetObject("htbZSCo", htbZSCo);
+  htbZSCo->Fit("landau","","R",0.8,1.2);
+
+  TH1D *hallZ = nullptr;
+  f1->GetObject("hallZ", hallZ);
+  hallZ->Fit("landau","","R",0.8,1.15);
+
+  TH1D *htbZ = nullptr;
+  f1->GetObject("htbZ", htbZ);
+  htbZ->Fit("landau","","R",0.8,1.2);
+
+  TH1D *hallZSC = nullptr;
+  f1->GetObject("hallZSC", hallZSC);
+  hallZSC->Fit("landau","","R",0.8,1.15);
+
+  TH1D *hallZSCcorr = nullptr;
+  f1->GetObject("hallZSCcorr", hallZSCcorr);
+  hallZSCcorr->Fit("landau","","R",0.7,1.2);
+
+  TH1D *htbZSC = nullptr;
+  f1->GetObject("htbZSC", htbZSC);
+  htbZSC->Fit("landau","","R",0.9,1.2);
+
+  TH1D *hallZ2 = nullptr;
+  f1->GetObject("hallZ2", hallZ2);
+  hallZ2->Fit("landau","","R",0.8,1.15);
+
+  TH1D *htbZ2 = nullptr;
+  f1->GetObject("htbZ2", htbZ2);
+  htbZ2->Fit("landau","","R",0.8,1.2);
+
+  TH1D *hallZSC2 = nullptr;
+  f1->GetObject("hallZSC2", hallZSC2);
+  hallZSC2->Fit("landau","","R",0.8,1.15);
+
+  TH1D *hallZSCcorr2 = nullptr;
+  f1->GetObject("hallZSCcorr2", hallZSCcorr2);
+  hallZSCcorr2->Fit("landau","","R",0.7,1.2);
+
+  TH1D *htbZSC2 = nullptr;
+  f1->GetObject("htbZSC2", htbZSC2);
+  htbZSC2->Fit("landau","","R",0.8,1.2);
+
+  // Now plot 'em on 3 canvases
+
+  cname = TString::Format("%s%d","c",cknt);
+  cv[cknt] = new TCanvas(cname.Data(),cname.Data(),1);
+  gStyle->SetOptLogy();
+  gStyle->SetOptStat(1111); 
+  gStyle->SetOptFit();
+  cv[cknt]->Divide(3,2);
+  
+  int pad = 1;
+  
+  cv[cknt]->cd(pad++);
+  hallZo->Draw();
+  cv[cknt]->cd(pad++);
+  hallZSCo->Draw();
+  cv[cknt]->cd(pad++);
+  hallZSCcorro->Draw();
+  cv[cknt]->cd(pad++);
+  htbZo->Draw();
+  cv[cknt]->cd(pad++);
+  htbZSCo->Draw();
+
+  cknt++;
+
+  cname = TString::Format("%s%d","c",cknt);
+  cv[cknt] = new TCanvas(cname.Data(),cname.Data(),1);
+  gStyle->SetOptLogy();
+  gStyle->SetOptStat(1111); 
+  gStyle->SetOptFit();
+  cv[cknt]->Divide(3,2);
+  
+  pad = 1;
+  
+  cv[cknt]->cd(pad++);
+  hallZ->Draw();
+  cv[cknt]->cd(pad++);
+  hallZSC->Draw();
+  cv[cknt]->cd(pad++);
+  hallZSCcorr->Draw();
+  cv[cknt]->cd(pad++);
+  htbZ->Draw();
+  cv[cknt]->cd(pad++);
+  htbZSC->Draw();
+
+  cknt++;
+
+  cname = TString::Format("%s%d","c",cknt);
+  cv[cknt] = new TCanvas(cname.Data(),cname.Data(),1);
+  gStyle->SetOptLogy();
+  gStyle->SetOptStat(1111); 
+  gStyle->SetOptFit();
+  cv[cknt]->Divide(3,2);
+  
+  pad = 1;
+  
+  cv[cknt]->cd(pad++);
+  hallZ2->Draw();
+  cv[cknt]->cd(pad++);
+  hallZSC2->Draw();
+  cv[cknt]->cd(pad++);
+  hallZSCcorr2->Draw();
+  cv[cknt]->cd(pad++);
+  htbZ2->Draw();
+  cv[cknt]->cd(pad++);
+  htbZSC2->Draw();
+
+  cknt++;
+
+  // SC   Back to plotting the rest of the stuff
+  
   TH1D** hEnddT;
   hEnddT = new TH1D*[16*2];
   
@@ -301,7 +430,6 @@ void MakeSkeletorPlotsBatch(TString fname, TString runNum="", TString TOFtype=""
   hZdT = new TH2D*[17];
   TProfile** pZdT;
   pZdT = new TProfile*[17];
-//  TString poutname = baseName+TOFtype+runNum+".PosCompare.txt";  
   TString poutname = baseName;
   poutname.ReplaceAll(".pdf",".PosCompare.txt");  
   ofstream pout;
@@ -349,7 +477,6 @@ void MakeSkeletorPlotsBatch(TString fname, TString runNum="", TString TOFtype=""
   TProfile** pZdct;
   pZdct = new TProfile*[17];
 
-//  poutname = baseName+TOFtype+runNum+".ChargeDivFrac.txt";
   poutname = baseName;
   poutname.ReplaceAll(".pdf",".ChargeDivFrac.txt");  
 //  ofstream pout;
@@ -397,7 +524,6 @@ void MakeSkeletorPlotsBatch(TString fname, TString runNum="", TString TOFtype=""
   TProfile** pTdct;
   pTdct = new TProfile*[17];
 
-//  poutname = baseName+TOFtype+runNum+".TimeDiff.txt";
   poutname = baseName;
   poutname.ReplaceAll(".pdf",".TimeDiff.txt");  
   
@@ -448,7 +574,8 @@ void MakeSkeletorPlotsBatch(TString fname, TString runNum="", TString TOFtype=""
   TProfile** pveff;
   pveff = new TProfile*[17];
 
-  poutname = baseName+TOFtype+runNum+".veff.txt";  
+  poutname = baseName;
+  poutname.ReplaceAll(".pdf",".veff.txt");  
   if (writeFits) pout.open(poutname.Data(),std::ios::out);
   
   cname = TString::Format("%s%d","c",cknt);
@@ -633,7 +760,7 @@ void MakeSkeletorPlotsBatch(TString fname, TString runNum="", TString TOFtype=""
   gStyle->SetOptStat(11); //# of entries only
   cv[cknt]->Divide(3,3);
   
-  int pad = 1;
+  pad = 1;
   
   cv[cknt]->cd(pad++);
   hZdct[16]->Draw();
@@ -678,9 +805,10 @@ void MakeSkeletorPlotsBatch(TString fname, TString runNum="", TString TOFtype=""
   gStyle->SetOptLogy(0);
   gStyle->SetOptLogz(1);
   gStyle->SetOptStat(11); //# of entries and title only
+  gPad->SetLogz(1);
   
-  TH2D* hRvZ = (TH2D*)f1->Get("hRvZ");
-  hRvZ->Draw();
+  TH2D* hZvR = (TH2D*)f1->Get("hZvR");
+  hZvR->Draw();
   
   cknt++;
 
@@ -691,12 +819,23 @@ void MakeSkeletorPlotsBatch(TString fname, TString runNum="", TString TOFtype=""
   gStyle->SetOptLogy(0);
   gStyle->SetOptLogz(1);
   gStyle->SetOptStat(11); //# of entries and title only
+  gPad->SetLogz(1);
   
   TH2D* hBvT = (TH2D*)f1->Get("hBvT");
   hBvT->Draw();
   
   cknt++;
 
+  cname = TString::Format("%s%d","c",cknt);
+  cv[cknt] = new TCanvas(cname.Data(),cname.Data(),1);
+  gStyle->SetOptStat(11); //# of entries only
+  cv[cknt]->cd();
+  gPad->SetLogz(1);
+
+  TH2D* hZvbeta = (TH2D*)f1->Get("hZvbeta");
+  hZvbeta->Draw();
+  
+  cknt++;
 
   //////////////
   // Write all canvases to pdf

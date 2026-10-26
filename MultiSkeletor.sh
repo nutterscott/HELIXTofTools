@@ -10,10 +10,11 @@ INDIR=/data
 #where to write your skeletor output root files
 OUTDIR=/data/skeletor
 #Choices: GV, KS, or blank
-TOFtype=GV
+TOFtype=
 # Max number of running copies at the same time
-# NB: Full isochrones v9 take 6GB/run, so set the number of runs to execute 
-# simultaneously accordingly so that you don't run out of memory.
+# NB: Bon runs: Full isochrones v9 take 6GB/run,
+# NB: Boff runs: take ~1.5 GB/run, 
+# Set the number of runs to execute simultaneously accordingly so that you don't run out of memory.
 max_jobs=35
 
 if [ ! -f "$1" ]; then
