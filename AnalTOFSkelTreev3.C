@@ -1,5 +1,9 @@
 //void AnalTOFSkel(TString infile) //infile is tof output created by skeletor
 //infile: skeletor.15550.root
+
+//NOW SET TO WORK WITH skeletor.v12.1.NT (new tracking) as input. 
+// BUG FIXES APPLIED.
+
 //
 // SC 10/12/2026   repackage AnalTOFSkel.C into AnalTOFSkelTree.C which will be invoked within AnalTOFSkelChain.C to
 // process multiple skeletor files (in a TChain) with a list of input trees read from a text file
@@ -320,28 +324,31 @@ void AnalTOFSkelTree(TTree *toft, const TString &outfile, bool recalcChargeDivPo
   {
     TString hname   = TString::Format("%s%d","hZall",i);
     TString htitle  = TString::Format("%s%d","SPW Charge (t+b+bor), Level ", i);
-    hZall[i] = new TH1D(hname.Data(),htitle.Data(),200,0.,20.);
+    hZall[i] = new TH1D(hname.Data(),htitle.Data(),400,0.,20.);
 
     hname   = TString::Format("%s%d","hZAall",i);
     htitle  = TString::Format("%s%d","Arithmetic Charge (t+b+bor), Level ", i);
-    hZAall[i] = new TH1D(hname.Data(),htitle.Data(),200,0.,20.);
+    hZAall[i] = new TH1D(hname.Data(),htitle.Data(),400,0.,20.);
 
     hname   = TString::Format("%s%d","hZGall",i);
     htitle  = TString::Format("%s%d","Geometric charge (t+b+bor), Level ", i);
-    hZGall[i] = new TH1D(hname.Data(),htitle.Data(),200,0.,20.);
+    hZGall[i] = new TH1D(hname.Data(),htitle.Data(),400,0.,20.);
 
     hname   = TString::Format("%s%d","hZtb",i);
     htitle  = TString::Format("%s%d","SPW Charge (t+b), Level ", i);
-    hZtb[i] = new TH1D(hname.Data(),htitle.Data(),200,0.,20.);
+    hZtb[i] = new TH1D(hname.Data(),htitle.Data(),400,0.,20.);
 
     hname   = TString::Format("%s%d","hZAtb",i);
     htitle  = TString::Format("%s%d","Arithmetic Charge (t+b), Level ", i);
-    hZAtb[i] = new TH1D(hname.Data(),htitle.Data(),200,0.,20.);
+    hZAtb[i] = new TH1D(hname.Data(),htitle.Data(),400,0.,20.);
 
     hname   = TString::Format("%s%d","hZGtb",i);
     htitle  = TString::Format("%s%d","Geometric charge (t+b), Level ", i);
-    hZGtb[i] = new TH1D(hname.Data(),htitle.Data(),200,0.,20.);
+    hZGtb[i] = new TH1D(hname.Data(),htitle.Data(),400,0.,20.);
   }
+  
+  auto hZSPWvG  = new TH2D("hZSPWvG","SPW vs G chg;Arith/Geom;SPW Z (G/G)",200,0,10,200,0,10);
+  auto hZAvG    = new TH2D("hZAvG","A vs G chg;Arith/Geom;Arith/Arith",200,0,10,200,0,10);
   
   
   // SC charge distributions, with either average thickness PLC or true thickness PLC correction
@@ -414,14 +421,68 @@ void AnalTOFSkelTree(TTree *toft, const TString &outfile, bool recalcChargeDivPo
 
     ///ORDERING: TOP, BORE, BOTTOM
 
+    //Watch this trick: set up arrays to avoid lots of repeated code.
+    HLX_Stg2_TOFHit* tofHits[3] = {topTOF, borTOF, botTOF};  //not copies, so use pointer ->
+    
+    /////////////////
+    //Fixes for fuck ups:
+    // v12.1.NT (new tracking): screwed up SignalSum. NB: THis takes care of normalization to mpv[8] but not thickness correction
+    // Loop over FEEs in each paddle and fix:
+    //HLX: 0-7 lower, 8-15 upper, 16 is bore
+    // Ensure getFEEHit returns a reference (&), not a copy or a const
+    
+    
+    for (int i=0; i<3; i++) //paddle loop
+    {      
+      HLX_Stg2_TOFPaddleEndHit* ends[2] = {&(tofHits[i]->fHitEast), &(tofHits[i]->fHitWest)};
+      for (int k=0; k<2; k++) //end loop
+      {
+        int nFees     = ends[k]->getFEEHitCount();
+        int paddleID  = ends[k]->fTag.getPaddleID();
+        int endID     = ends[k]->fTag.getPaddleEndID();        
+        for (int jk=0; jk<nFees; jk++)
+        {
+          int feeID = ends[k]->getFEEHit(jk).fTag.getFEEID();
+          auto& feeHit = ends[k]->fFEEHits[jk];
+          auto [laneIdx, chanIdx] = theGeom->fTOF.fGeoMap[{paddleID, endID, feeID}];
+          int SCfeeID = laneIdx*8 + chanIdx; //HLX labels. tofcal12
+          double feeSignal = feeHit.fSignalSumRaw;
+          double chanGain = fCal.mpv[SCfeeID]/fCal.mpv[8];  //normalize to FEE8 (paddle 0, FEE0)
+          feeHit.fSignalSum = feeHit.fSignalSumRaw/chanGain;
+          feeHit.fSignalSum /= fCal.mippk;  //scale by global mippk to Z=1
+        }
+      }
+    }
+    
+    //spot check:
+//    for (int i=0; i<3; i++)
+//    {
+//      cout << tofHits[i]->getPaddleEndHit(HLX_Geometry_TOF::kEast).getFEEHit(0).fSignalSum << "\t" << tofHits[i]->getPaddleEndHit(HLX_Geometry_TOF::kWest).getFEEHit(0).fSignalSum << endl;
+//      cout << tofHits[i]->getPaddleEndHit(HLX_Geometry_TOF::kEast).getFEEHit(1).fSignalSum << "\t" << tofHits[i]->getPaddleEndHit(HLX_Geometry_TOF::kWest).getFEEHit(1).fSignalSum << endl;
+//    }
+//    cout << botTOF->getPaddleEndHit(HLX_Geometry_TOF::kEast).getFEEHit(0).fSignalSum << "\t" << botTOF->getPaddleEndHit(HLX_Geometry_TOF::kWest).getFEEHit(0).fSignalSum << endl;
+    
+    // v12.GV
+    //NOTE: Apply corrections specific to this version of skeletor output:
+//    for (int i=0; i<3; i++) 
+//    {
+//      padSig[i] *= avgthick[padID[i]];
+//      padSig [i] *= fCal.mpv[8]/fCal.mpv[0];   //correct for getting the wrong normalization fee.
+//    } 
+    
+    
+    // Fuck-up finishing
+    //////////////////
+    
+    
+    
     //HLX numbering:
     int toppadID = topTOF->fTag.getPaddleID();
     int borpadID = borTOF->fTag.getPaddleID();
     int botpadID = botTOF->fTag.getPaddleID();
     
-    //Watch this trick: set up arrays to avoid lots of repeated code.
     int padID[3] = {toppadID, borpadID, botpadID};    
-    HLX_Stg2_TOFHit* tofHits[3] = {topTOF, borTOF, botTOF};  //not copies, so use pointer ->
+
     double tofX[3]    = {tvars.ttofX, tvars.boreX,  tvars.btofX};
     double tofY[3]    = {tvars.ttofY, tvars.boreY,  tvars.btofY};
     double padPLC[3]  = {tvars.topPLC,tvars.borePLC,tvars.botPLC};
@@ -455,12 +516,16 @@ void AnalTOFSkelTree(TTree *toft, const TString &outfile, bool recalcChargeDivPo
                         getPadEndArithMeanSignal(boreW), getPadEndArithMeanSignal(bE), getPadEndArithMeanSignal(bW) };
     double eSigG[6] = { getPadEndGeomMeanSignal(tE), getPadEndGeomMeanSignal(tW), getPadEndGeomMeanSignal(boreE), 
                         getPadEndGeomMeanSignal(boreW), getPadEndGeomMeanSignal(bE), getPadEndGeomMeanSignal(bW) };
+//    double eSigSC[6]= { getTBPadEndSignalSC(tE), getTBPadEndSignalSC(tW), getBoreEndSignalSC(boreE), 
+//                        getBoreEndSignalSC(boreW), getTBPadEndSignalSC(bE), getTBPadEndSignalSC(bW) };
     
-    
-//  cout << ik << " eN: " << eSig [3] << "\t" << eSig [4] << "\t" << eSig [5] << endl;
-//  cout << ik << " eA: " << eSigA[3] << "\t" << eSigA[4] << "\t" << eSigA[5] << endl;
-//  cout << ik << " eG: " << eSigG[3] << "\t" << eSigG[4] << "\t" << eSigG[5] << endl;
-//  cout << endl;
+  
+//  cout << " ****NEW EVENT****" << endl;
+//  cout << ik << " eN: " << eSig [0] << "\t" << eSig [1] << "\t" << eSig [2] << "\t" << eSig [3] << "\t" << eSig [4] << "\t" << eSig [5] << endl;
+//  cout << ik << " eA: " << eSigA[0] << "\t" << eSigA[1] << "\t" << eSigA[2] << "\t" << eSigA[3] << "\t" << eSigA[4] << "\t" << eSigA[5] << endl;
+//  cout << ik << " eG: " << eSigG[0] << "\t" << eSigG[1] << "\t" << eSigG[2] << "\t" << eSigG[3] << "\t" << eSigG[4] << "\t" << eSigG[5] << endl;
+//  cout << ik <<" eSC: " <<eSigSC[0] << "\t" <<eSigSC[1] << "\t" <<eSigSC[2] << "\t" <<eSigSC[3] << "\t" <<eSigSC[4] << "\t" <<eSigSC[5] << endl;
+  cout << endl;
     
     //fill end-based signal histos
     for (int i=0; i<3; i++) //paddle
@@ -493,10 +558,11 @@ void AnalTOFSkelTree(TTree *toft, const TString &outfile, bool recalcChargeDivPo
     double tolx[3] = {100., 303., 100.}; //mm
     double toly[3] = {800., 303., 800.}; //mm
     
-    //signals: These were corrected for pathlength (thickness) in TemplateAnal already, and now need to have that uncorrected before we can correct again here
+    //signals: 
     double padSig[3]  = {topTOF->getSignal(), borTOF->getSignal(), botTOF->getSignal()}; //SPW method
     double padSigA[3] = {getPadMeanArithSignal(topTOF), getPadMeanArithSignal(borTOF), getPadMeanArithSignal(botTOF)}; //arith mean of paddle ends. End fees combined with arith mean.
     double padSigG[3] = {getPadMeanGeomSignal(topTOF),  getPadMeanGeomSignal(borTOF),  getPadMeanGeomSignal(botTOF)}; //geom mean of paddle ends. End fees combined with arith mean.
+//    double padSigSC[3]= {getPadSignalSC(topTOF),  getPadSignalSC(borTOF),  getPadSignalSC(botTOF)}; //geom mean of paddle ends. End fees combined with arith mean.
     
 //  cout << "Arith: " << getPadMeanArithSignal(topTOF) << endl;
 //  cout << "Geom: " << getPadMeanGeomSignal(topTOF) << endl;
@@ -504,7 +570,8 @@ void AnalTOFSkelTree(TTree *toft, const TString &outfile, bool recalcChargeDivPo
 //  cout << ik << " N: " << padSig [0] << "\t" << padSig [1] << "\t" << padSig [2] << endl;
 //  cout << ik << " A: " << padSigA[0] << "\t" << padSigA[1] << "\t" << padSigA[2] << endl;
 //  cout << ik << " G: " << padSigG[0] << "\t" << padSigG[1] << "\t" << padSigG[2] << endl;
-//  cout << endl;
+//  cout << ik << "SC: " <<padSigSC[0] << "\t" <<padSigSC[1] << "\t" <<padSigSC[2] << endl;
+  cout << endl;
     
     double chg[3]  = {1., 1., 1.};
     double chgA[3] = {1., 1., 1.};
@@ -554,8 +621,8 @@ void AnalTOFSkelTree(TTree *toft, const TString &outfile, bool recalcChargeDivPo
         }
       	hthck[padID[i]] -> Fill(thck[i]);        
       }
-//      tcorr[i] = 1./thck[i];   // this tcorr factor will *multiply* the signal size
-        tcorr[i] = avgthick[padID[i]] / thck[i];   // this tcorr factor will *multiply* the signal size
+      tcorr[i] = 1./thck[i];   // this tcorr factor will *multiply* the signal size
+//        tcorr[i] = avgthick[padID[i]] / thck[i];   // this tcorr factor will *multiply* the signal size
     }
     
     /////////////////////////////////////////////////////
@@ -589,13 +656,6 @@ void AnalTOFSkelTree(TTree *toft, const TString &outfile, bool recalcChargeDivPo
       hEnddT[paddleID*2+endID]->Fill(dT); //N-S
 //      cout << i << " " << paddleID << " " << endID << " " << dT << endl;
     }
-    
-    //NOTE: Apply corrections specific to this version of skeletor output:
-    for (int i=0; i<3; i++) 
-    {
-//      padSig[i] *= avgthick[padID[i]];
-      padSig [i] *= fCal.mpv[8]/fCal.mpv[0];   //correct for getting the wrong normalization fee.
-    } 
     
     //Fill hists by paddle:
     for (int j=0; j<3; j++)
@@ -830,6 +890,10 @@ void AnalTOFSkelTree(TTree *toft, const TString &outfile, bool recalcChargeDivPo
       hSignalG[padID[i]]->Fill(tofY[i]-padCenter[i], padSigG[i]);
       
     }
+    
+    //fill comparison plots
+    hZSPWvG->Fill(chgG[2], chg[2]);
+    hZAvG->Fill(chgG[2], chgA[2]);
 
     /*
     if (abs(tofZ2[0]-tofZ2[2])<0.4 ) { // apply top/bottom tight charge agreement

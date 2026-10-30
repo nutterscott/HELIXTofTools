@@ -38,8 +38,79 @@ double getPadMeanSignal(HLX_Stg2_TOFHit* padHit, bool usePadArith = false, bool 
   double sE = (useEndArith)? getPadEndArithMeanSignal(tE) : getPadEndGeomMeanSignal(tE);
   double sW = (useEndArith)? getPadEndArithMeanSignal(tW) : getPadEndGeomMeanSignal(tW);
   if (usePadArith) return (sE+sW)/2.;
-  else return (sE>0 && sW>0)? sqrt(sE*sW) : 0; 
+  else return (sE*sW>=0)? sqrt(sE*sW) : 0; 
 }
 
 double getPadMeanArithSignal(HLX_Stg2_TOFHit* padHit, bool useEndArith = true) {return getPadMeanSignal(padHit, true, useEndArith);}
 double getPadMeanGeomSignal (HLX_Stg2_TOFHit* padHit, bool useEndArith = true) {return getPadMeanSignal(padHit, false, useEndArith);}
+
+double getTBPadEndSignalSC(HLX_Stg2_TOFPaddleEndHit endHit)  //default to using arithmetic mean
+{
+  //arithmetic only for top and bottom
+  double endSig = 0;
+  int nFees     = endHit.getFEEHitCount();
+  int nFEEgood  = 0;
+  for (int j=0; j<nFees; j++)
+  {
+  	if ( endHit.getFEEHit(j).fStatusFlag == HLX_Stg2_TOFFEEHit::kGood ) {
+  	  nFEEgood++;
+  	  endSig += endHit.getFEEHit(j).fSignalSum;
+  	}
+  }
+  if (nFEEgood == 0) return 0;
+
+  endSig /= nFEEgood;  // now we have the ARITHMETIC average of the paddle end hit (at this point still messed up for the mpv[8] / mpv[0] misnormalization, this will be fixed
+  
+  return endSig;
+}  
+
+double getBoreEndSignalSC(HLX_Stg2_TOFPaddleEndHit endHit)  //default to using arithmetic mean
+{
+  //arithmetic only for top and bottom
+  double endSig = 0;
+  int nFees     = endHit.getFEEHitCount();
+
+  int nFEEgood  = 0;
+  for (int j=0; j<nFees; j++)
+  {
+  	if ( endHit.getFEEHit(j).fStatusFlag == HLX_Stg2_TOFFEEHit::kGood ) {
+  	  nFEEgood++;
+  	  endSig += endHit.getFEEHit(j).fSignalSum;
+  	}
+  }
+  if (nFEEgood == 0) return 0;
+
+  endSig /= nFEEgood;  // now we have the ARITHMETIC average of the paddle end hit (at this point still messed up for the mpv[8] / mpv[0] misnormalization, this will be fixed
+
+  /*
+  if (nFees != 4) return 0; 
+
+	endSig = max(endHit.getFEEHit(0).fSignalSum+endHit.getFEEHit(1).fSignalSum,
+     max(endHit.getFEEHit(1).fSignalSum+endHit.getFEEHit(2).fSignalSum,
+	   endHit.getFEEHit(2).fSignalSum+endHit.getFEEHit(3).fSignalSum));
+   endSig /= 2.;    // divide by 2 for average
+  */
+  return endSig;
+}  
+  
+  
+double getPadSignalSC(HLX_Stg2_TOFHit* padHit) 
+{
+  HLX_Stg2_TOFPaddleEndHit tE     = padHit->getPaddleEndHit(HLX_Geometry_TOF::kEast);
+  HLX_Stg2_TOFPaddleEndHit tW     = padHit->getPaddleEndHit(HLX_Geometry_TOF::kWest);
+  
+  auto theGeom = HLX_Geometry::getInstance();
+  double sE = 0, sW = 0;
+  double padSig = 0;
+  if(theGeom->fTOF.isBore(padHit->fTag.getPaddleID()))
+  {  //bore paddle
+    sE = getBoreEndSignalSC(tE);
+    sW = getBoreEndSignalSC(tW);
+    padSig = (sE+sW)/2.;
+  } else { //TB paddle
+    sE = getTBPadEndSignalSC(tE);
+    sW = getTBPadEndSignalSC(tW);
+    padSig = sqrt(sE*sW);
+  }
+  return padSig;
+}
