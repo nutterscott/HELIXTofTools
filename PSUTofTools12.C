@@ -51,6 +51,30 @@ PSUTOFCalibs  fCal;           //global struct for modified OUTPUT calib values
 TFile*        fOutFile;           //OUPUT TFile with Calibs
 TTree*        fOUTTOFcal = {};    //OUTPUT calibration parameters
 
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo....
+//a function we need:
+vector<string> getFileListVector(string filename ){
+  vector<string> fileListVector;
+  std::ifstream file;
+  file.open(filename);
+  if (!file.good()) {
+    cout << "Cannot open file: " << filename << endl;
+    exit(-1);
+  } else {
+    string line;
+    int i = 0;
+    while (!file.eof()) {
+      getline(file, line);
+      if (line[0] != '#'  && line != "") {
+        fileListVector.push_back(line);
+        i++;
+      }
+    }
+  }
+  file.close();
+  return fileListVector;
+}
+
 void fillFitSlopeIntercepts(int runNum) //fill the slopes and intercepts in the new ttree by reading from files. Input is run number.
 {
   TString baseName="/data/skeletor/MakeSkeletorPlotsBatch.";
@@ -575,8 +599,9 @@ void modifyTofcal() //one time pass through all entries and writing out to a new
 
     //add or modify branches:
     fillFitSlopeIntercepts(runnum);
+    
 
-    //fill tofcal ttree 
+    //fill modified tofcal ttree 
     fOUTTOFcal->Fill();
   }
   
