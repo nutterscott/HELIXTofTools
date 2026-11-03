@@ -18,8 +18,8 @@
 //Global shit:
 /////  SET THESE FOR READING AND TRANSLATION!! ////
 //Set up input and output tofcal ttree
-string kInputTofcalName = "tofcal12.1.root";
-string kOutputTofcalName = "tofcal12.2.root";
+string kInputTofcalName = "tofcal12.2.root";
+string kOutputTofcalName = "tofcal12.3.root";
 
 
 //TREE VARIABLES: Saved in structure for eases of copying
@@ -73,6 +73,36 @@ vector<string> getFileListVector(string filename ){
   }
   file.close();
   return fileListVector;
+}
+
+void fillNewMPVValues(int runNum) //fill the mpv and empv values in the new ttree by reading from txt files. Input is run number.
+{
+  string baseName="./FEESigs/FEESigs.";
+
+//  cout << "Filling fits for run " << runNum << endl;
+
+  string fname = baseName+std::to_string(runNum)+".txt";
+//  cout << "Reading " << fname << endl;
+  ifstream input;
+  input.open(fname.c_str());
+  if (!input.is_open())
+  {
+    cout << "//////////////////////////////////////////// " << endl;
+    cout << "File cannot be found: " << fname << endl;
+    cout << "//////////////////////////////////////////// " << endl;
+//    exit(-1);
+    return;
+  }
+  
+  int feeID;
+  double pk, pkerr, chi2;
+  for (int i=0; i<72; i++) //fees
+  {
+    input >> feeID >> pk >> pkerr >> chi2;
+    fCal.mpv[feeID] = pk; 
+    fCal.empv[feeID] = pkerr; 
+  }  
+  input.close();  
 }
 
 void fillFitSlopeIntercepts(int runNum) //fill the slopes and intercepts in the new ttree by reading from files. Input is run number.
@@ -355,9 +385,9 @@ void adjustSCTOFCalibsForRun(PSUTOFCalibs oldCal)
     if (fCal.widthdd[j]<0 || fCal.widthdd[j]>0.04) {fCal.peakdd[j] = oldCal.peakdd[j];}
   }
 
-  ////// NOTE:  THIS PART SEEMS IFFY ///////////
+  // Check mpv (fee buy fee fSignalSumRaw peak value after PLC and thickness corrections)
   for( Int_t j = 0; j < 72; j++ ) {
-    if (fCal.empv[j]/fCal.mpv[j] > 0.02) { // Need Landau peak determined to better than 2% accuracy. Assumes previous values were good. 
+    if (fCal.empv[j]/fCal.mpv[j] > 0.02 || fCal.mpv[j] <= 0 ) { // Need Landau peak determined to better than 2% accuracy. Assumes previous values were good. 
       fCal.mpv[j]  = oldCal.mpv[j];
       fCal.empv[j] = oldCal.empv[j];
     }
@@ -373,7 +403,7 @@ void adjustSCTOFCalibsForRun(PSUTOFCalibs oldCal)
 }
 
 ////////////////////////////////////////////////////////
-void getSCTOFCalibsForRun(int runnum, bool doAdjusting = true) //Getting fCal for run runnum
+void getSCTOFCalibsForRun(int runnum, bool doAdjustment = true) //Getting fCal for run runnum
 {
   static int runcurrent = 0;
 //  cout << "getSCTOFCalibsForRun: Getting fCal for run " << runnum << ", runcurrent =  " << runcurrent << endl;
@@ -400,7 +430,7 @@ void getSCTOFCalibsForRun(int runnum, bool doAdjusting = true) //Getting fCal fo
 //  cout << "getSCTOFCalibsForRun: found entry " << runcurrent << endl;
 
 //adjusting particular values inside fCal for run
-  if (doAdjusting) adjustSCTOFCalibsForRun( oldCal ); //adjusting particular values inside fCal for run
+  if (doAdjustment) adjustSCTOFCalibsForRun( oldCal ); //adjusting particular values inside fCal for run
 
 }
 
@@ -575,7 +605,7 @@ bool loadSCTOFCalibs(string ipfName = kInputTofcalName) //only called once V11 a
 
 }
 */
-void modifyTofcal() //one time pass through all entries and writing out to a new tofcal tree
+void modifyTofcal() //one time pass through all *tofcal* entries and writing out to a new tofcal tree
 {
   // Load INPUT tofcal calibration data
   loadSCTOFCalibsv12();
@@ -609,3 +639,37 @@ void modifyTofcal() //one time pass through all entries and writing out to a new
   fOUTTOFcal->Write();
   fOutFile->Close();  
 }
+
+void MakeNewTofCalTree(string runFileListName) //one time pass through all *runList* entries and writing out to a new tofcal tree
+{
+  
+  //this version makes new tofcal based on Bon and Boff combined list of runs
+  //Need to properly fill other values, eg: nument, runtime, pedm
+  
+  vector<string> runList = getFileListVector(runFileListName);
+  
+  // Load INPUT tofcal calibration data
+  loadSCTOFCalibsv12();
+  
+  //set up OUTPUT tofcal calibration  
+  createSCTOFCalibs();
+
+  //we want a tofcal entry for every file in the Bon and Boff combined run list
+  for (int i=0; i<runList.size(); i++)
+  {
+    //get current set of tofcal parameters:
+    getSCTOFCalibsForRun(std::stoi(runList[i]), false);  //don't do adjustment of bad parameters
+    
+    //add or modify branches:
+    fillNewMPVValues(std::stoi(runList[i]));
+
+    //fill modified tofcal ttree 
+    fOUTTOFcal->Fill();
+
+  }
+
+  //finalize output calib file and tree:
+  fOUTTOFcal->Write();
+  fOutFile->Close();  
+}
+

@@ -1,5 +1,5 @@
 //correct signal for response across length of paddle
-// using pol2 fits to sqrt(signal) vs DCTY for each paddle
+// using pol2 fits to sqrt(signal) vs DCTY for each paddle created by SliceAndDice.C
 
 double p0[17], p1[17], p2[17];
 
