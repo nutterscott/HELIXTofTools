@@ -96,6 +96,9 @@ void fillNewMPVValues(int runNum) //fill the mpv and empv values in the new ttre
   
   int feeID;
   double pk, pkerr, chi2;
+  
+  fCal.runnum = runNum; //needed to insert new values
+
   for (int i=0; i<72; i++) //fees
   {
     input >> feeID >> pk >> pkerr >> chi2;
@@ -657,11 +660,14 @@ void MakeNewTofCalTree(string runFileListName) //one time pass through all *runL
   //we want a tofcal entry for every file in the Bon and Boff combined run list
   for (int i=0; i<runList.size(); i++)
   {
+//    cout << "Analyzing run " << std::stoi(runList[i]) << endl;
     //get current set of tofcal parameters:
     getSCTOFCalibsForRun(std::stoi(runList[i]), false);  //don't do adjustment of bad parameters
+//    cout << "Before, after: mpv[5] = " << fCal.mpv[5];
     
     //add or modify branches:
     fillNewMPVValues(std::stoi(runList[i]));
+//    cout << "\t" << fCal.mpv[5] << endl;
 
     //fill modified tofcal ttree 
     fOUTTOFcal->Fill();
