@@ -388,9 +388,9 @@ void adjustSCTOFCalibsForRun(PSUTOFCalibs oldCal)
     if (fCal.widthdd[j]<0 || fCal.widthdd[j]>0.04) {fCal.peakdd[j] = oldCal.peakdd[j];}
   }
 
-  // Check mpv (fee buy fee fSignalSumRaw peak value after PLC and thickness corrections)
+  // Check mpv (fee by fee fSignalSumRaw peak value after PLC and thickness corrections)
   for( Int_t j = 0; j < 72; j++ ) {
-    if (fCal.empv[j]/fCal.mpv[j] > 0.02 || fCal.mpv[j] <= 0 ) { // Need Landau peak determined to better than 2% accuracy. Assumes previous values were good. 
+    if ( fCal.empv[j] <= 0 || fCal.mpv[j] <= 0 || fCal.empv[j]/fCal.mpv[j] > 0.02 ) { // Need Landau peak determined to better than 2% accuracy. Assumes previous values were good. 
       fCal.mpv[j]  = oldCal.mpv[j];
       fCal.empv[j] = oldCal.empv[j];
     }
