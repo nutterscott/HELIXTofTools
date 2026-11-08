@@ -21,6 +21,8 @@
 string kInputTofcalName = "tofcal12.2.root";
 string kOutputTofcalName = "tofcal12.3.root";
 
+string kMergeInputTofcalName = "tofcal12b.root";
+
 
 //TREE VARIABLES: Saved in structure for eases of copying
 struct PSUTOFCalibs {
@@ -29,27 +31,30 @@ struct PSUTOFCalibs {
   Double_t runtime,pedm[72],rms[72],mpv[72],empv[72];
   Double_t etoeshift[17];
   Double_t peakuu[40], widthuu[40], peakud[40], widthud[40], peakdu[40], widthdu[40], peakdd[40], widthdd[40];
-//  Double_t interT[64],einterT[64],slopeT[64],eslopeT[64],interB[64],einterB[64],slopeB[64],eslopeB[64];
-//  Double_t interTW[64],einterTW[64],slopeTW[64],eslopeTW[64];
-//  Int_t padnum[17];
-//  Double_t topx[8][7],topy[8][17],topt[8][7][17],botx[8][7],boty[8][17],bott[8][7][17]; //,borex[1][11],borey[1][11],boret[1][11][11];
+  //v11:
+  Double_t interT[64],einterT[64],slopeT[64],eslopeT[64],interB[64],einterB[64],slopeB[64],eslopeB[64];
+  Double_t interTW[64],einterTW[64],slopeTW[64],eslopeTW[64];
+  Int_t padnum[17];
+  Double_t topx[8][7],topy[8][17],topt[8][7][17],botx[8][7],boty[8][17],bott[8][7][17]; //,borex[1][11],borey[1][11],boret[1][11][11];
   
   //new branches: tofcal12
   Double_t ZDm[17], ZDb[17];  //paddle slope, intercept, from DCTY vs fChargeDivFrac: fChargeDivFracPos = m*ChargeDivFrac + b
   Double_t TDm[17], TDb[17];  //paddle slope, intercept, from DCTY vs fTimeDiff:      fTimeDiffPos      = m*fTimeDiff + b
   
-  //tofcal13 with HELIX numbering scheme:
+  //tofcal12 with HELIX numbering scheme:
   Double_t padx[16][7], pady[16][17], padt[16][7][17]; //combine top and bottom paddles
   Double_t borex[1][11],borey[1][11],boret[1][11][11];
 };
 
-TFile*        fFile;          //INPUT TFile with Calibs
-TTree*        fTOFcal = {};   //INPUT calibration parameters
+TFile*        fInFile;          //INPUT TFile with Calibs
+TTree*        fCalTree{};      //INPUT calibration parameters 
+TTree*        fMergeCalTree{};      //INPUT merging calibration parameters 
 PSUTOFCalibs  fRtCal;         //global struct with INPUT variables that ROOT points to
+PSUTOFCalibs  fMergeCal;      //global struct for merging file INPUT calib values
 PSUTOFCalibs  fCal;           //global struct for modified OUTPUT calib values
 
-TFile*        fOutFile;           //OUPUT TFile with Calibs
-TTree*        fOUTTOFcal = {};    //OUTPUT calibration parameters
+TFile*        fOutFile;       //OUPUT TFile with Calibs
+TTree*        fOUTTOFcal{};   //OUTPUT calibration parameters
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo....
 //a function we need:
@@ -110,7 +115,8 @@ void fillNewMPVValues(int runNum) //fill the mpv and empv values in the new ttre
 
 void fillFitSlopeIntercepts(int runNum) //fill the slopes and intercepts in the new ttree by reading from files. Input is run number.
 {
-  TString baseName="/data/skeletor/MakeSkeletorPlotsBatch.";
+//  TString baseName="/data/skeletor/MakeSkeletorPlotsBatch.";
+  TString baseName="./PosFits/PosFits.";
 
 //  cout << "Filling fits for run " << runNum << endl;
 
@@ -235,7 +241,7 @@ bool createSCTOFCalibs(string opfName = kOutputTofcalName) //only called once. C
   return kTRUE;
 
 }
-/*
+
 ////////////////////////////////////////////////////////////
 void switchfCaltoHLXNumbering()   //one time call to switch SC root tree into HLX numbering scheme for this run.
 {
@@ -278,7 +284,7 @@ void switchfCaltoHLXNumbering()   //one time call to switch SC root tree into HL
   //SC: 0-7 top, 8=bore, 9-16 bot
   
   //Copy fCal into new structure:
-  PSUTOFCalibs HLXCal = fCal;
+  PSUTOFCalibs SCCal = fCal;
   
   //So painful....
   //loop through each set of variables by paddleID and reset fCal values:
@@ -288,8 +294,8 @@ void switchfCaltoHLXNumbering()   //one time call to switch SC root tree into HL
   
   for (int ipad=0; ipad<17; ipad++) //HLX paddleID
   {
-    fCal.etoeshift[ipad]    =HLXCal.etoeshift[padMap[ipad]] ;
-//    fCal.padnum[ipad]       =HLXCal.padnum[padMap[ipad]]    ;
+    fCal.etoeshift[ipad]    =SCCal.etoeshift[padMap[ipad]] ;
+//    fCal.padnum[ipad]       =SCCal.padnum[padMap[ipad]]    ;
     //NOTE: ZDm, ZDb, and TDm, TDb are already in HELIX numbering scheme since they were added later.
   }
   for (int ifee=0; ifee<72; ifee++) //HLX fee ID
@@ -297,23 +303,23 @@ void switchfCaltoHLXNumbering()   //one time call to switch SC root tree into HL
 //      auto [laneIdx, chanIdx] = theGeom->fTOF.fGeoMap[{paddleID, endID,  feeID}];
 //      int globFeeID = laneIdx*8+chanIdx;
     int scFeeID = fSCFeeIDMap[ifee];
-    fCal.pedm[ifee]         =HLXCal.pedm[scFeeID]      ;
-    fCal.rms[ifee]          =HLXCal.rms[scFeeID]       ;
-    fCal.mpv[ifee]          =HLXCal.mpv[scFeeID]       ;
-    fCal.empv[ifee]         =HLXCal.empv[scFeeID]      ;
+    fCal.pedm[ifee]         =SCCal.pedm[scFeeID]      ;
+    fCal.rms[ifee]          =SCCal.rms[scFeeID]       ;
+    fCal.mpv[ifee]          =SCCal.mpv[scFeeID]       ;
+    fCal.empv[ifee]         =SCCal.empv[scFeeID]      ;
     for (int ip=0; ip<7; ip++)
     {
-      fCal.pup[ifee][ip]       =HLXCal.pup[scFeeID][ip]    ;
-      fCal.epup[ifee][ip]      =HLXCal.epup[scFeeID][ip]   ;
-      fCal.pdn[ifee][ip]       =HLXCal.pdn[scFeeID][ip]    ;
-      fCal.epdn[ifee][ip]      =HLXCal.epdn[scFeeID][ip]   ;
+      fCal.pup[ifee][ip]       =SCCal.pup[scFeeID][ip]    ;
+      fCal.epup[ifee][ip]      =SCCal.epup[scFeeID][ip]   ;
+      fCal.pdn[ifee][ip]       =SCCal.pdn[scFeeID][ip]    ;
+      fCal.epdn[ifee][ip]      =SCCal.epdn[scFeeID][ip]   ;
     }
   }
 
-//    fCal.mippk            =HLXCal.mippk         ;
-//    fCal.runnum           =HLXCal.runnum        ;
-//    fCal.nument           =HLXCal.nument        ;
-//    fCal.runtime          =HLXCal.runtime       ;
+//    fCal.mippk            =SCCal.mippk         ;
+//    fCal.runnum           =SCCal.runnum        ;
+//    fCal.nument           =SCCal.nument        ;
+//    fCal.runtime          =SCCal.runtime       ;
   
 //  cout << "Converting up/down pairs. " << endl;
 //  cout << "FEE   scID   HLXID" << endl;
@@ -326,32 +332,32 @@ void switchfCaltoHLXNumbering()   //one time call to switch SC root tree into HL
   for (int HLXID=0; HLXID<=39; HLXID++)
   {
     int scID = (HLXID <= 15)? HLXID+24 : HLXID-16 ; 
-    fCal.peakuu[HLXID]       =HLXCal.peakuu[scID]    ;
-    fCal.widthuu[HLXID]      =HLXCal.widthuu[scID]   ;
-    fCal.peakud[HLXID]       =HLXCal.peakud[scID]    ;
-    fCal.widthud[HLXID]      =HLXCal.widthud[scID]   ;
-    fCal.peakdu[HLXID]       =HLXCal.peakdu[scID]    ;
-    fCal.widthdu[HLXID]      =HLXCal.widthdu[scID]   ;
-    fCal.peakdd[HLXID]       =HLXCal.peakdd[scID]    ;
-    fCal.widthdd[HLXID]      =HLXCal.widthdd[scID]   ;
+    fCal.peakuu[HLXID]       =SCCal.peakuu[scID]    ;
+    fCal.widthuu[HLXID]      =SCCal.widthuu[scID]   ;
+    fCal.peakud[HLXID]       =SCCal.peakud[scID]    ;
+    fCal.widthud[HLXID]      =SCCal.widthud[scID]   ;
+    fCal.peakdu[HLXID]       =SCCal.peakdu[scID]    ;
+    fCal.widthdu[HLXID]      =SCCal.widthdu[scID]   ;
+    fCal.peakdd[HLXID]       =SCCal.peakdd[scID]    ;
+    fCal.widthdd[HLXID]      =SCCal.widthdd[scID]   ;
   }
 
   //i don't know how to interpret these:
   
 //  for (int (i=0; i<64; i++)
 //  {
-//    fCal.interT[64]       =HLXCal.interT[64]    ;
-//    fCal.einterT[64]      =HLXCal.einterT[64]   ;
-//    fCal.slopeT[64]       =HLXCal.slopeT[64]    ;
-//    fCal.eslopeT[64]      =HLXCal.eslopeT[64]   ;
-//    fCal.interB[64]       =HLXCal.interB[64]    ;
-//    fCal.einterB[64]      =HLXCal.einterB[64]   ;
-//    fCal.slopeB[64]       =HLXCal.slopeB[64]    ;
-//    fCal.eslopeB[64]      =HLXCal.eslopeB[64]   ;
-//    fCal.interTW[64]      =HLXCal.interTW[64]   ;
-//    fCal.einterTW[64]     =HLXCal.einterTW[64]  ;
-//    fCal.slopeTW[64]      =HLXCal.slopeTW[64]   ;
-//    fCal.eslopeTW[64]     =HLXCal.eslopeTW[64]  ;
+//    fCal.interT[64]       =SCCal.interT[64]    ;
+//    fCal.einterT[64]      =SCCal.einterT[64]   ;
+//    fCal.slopeT[64]       =SCCal.slopeT[64]    ;
+//    fCal.eslopeT[64]      =SCCal.eslopeT[64]   ;
+//    fCal.interB[64]       =SCCal.interB[64]    ;
+//    fCal.einterB[64]      =SCCal.einterB[64]   ;
+//    fCal.slopeB[64]       =SCCal.slopeB[64]    ;
+//    fCal.eslopeB[64]      =SCCal.eslopeB[64]   ;
+//    fCal.interTW[64]      =SCCal.interTW[64]   ;
+//    fCal.einterTW[64]     =SCCal.einterTW[64]  ;
+//    fCal.slopeTW[64]      =SCCal.slopeTW[64]   ;
+//    fCal.eslopeTW[64]     =SCCal.eslopeTW[64]  ;
 //  }
 
   //switch thickness maps paddle numbering. Use single array for all top and bottom paddles. Make life easier!
@@ -359,22 +365,22 @@ void switchfCaltoHLXNumbering()   //one time call to switch SC root tree into HL
   {
     for (int ix=0; ix<7; ix++)
     {
-      fCal.padx[i][ix]       = (i<8)? HLXCal.botx[padMap[i]-9][ix] : HLXCal.topx[padMap[i]][ix]    ; //bottom for i<8, note padMap[0] = 9
-      for (int iy=0; iy<17; iy++) fCal.padt[i][ix][iy]   = (i<8)? HLXCal.bott[padMap[i]-9][ix][iy] : HLXCal.topt[padMap[i]][ix][iy];
+      fCal.padx[i][ix]       = (i<8)? SCCal.botx[padMap[i]-9][ix] : SCCal.topx[padMap[i]][ix]    ; //bottom for i<8, note padMap[0] = 9
+      for (int iy=0; iy<17; iy++) fCal.padt[i][ix][iy]   = (i<8)? SCCal.bott[padMap[i]-9][ix][iy] : SCCal.topt[padMap[i]][ix][iy];
     }
 
-    for (int iy=0; iy<17; iy++)   fCal.pady[i][iy]       = (i<8)? HLXCal.boty[padMap[i]-9][iy] : HLXCal.topy[padMap[i]][iy]    ; //bottom for i<8
+    for (int iy=0; iy<17; iy++)   fCal.pady[i][iy]       = (i<8)? SCCal.boty[padMap[i]-9][iy] : SCCal.topy[padMap[i]][iy]    ; //bottom for i<8
 
   }
   
   //bore map does not change? No need to copy since fCal is copy of fRtCal (original read)
 // DO THESE CHANGE WITH PADDLE NUMBER CHANGES? I DON'T THINK SO!
-//  fCal.borex[1][11]     =HLXCal.borex[1][11]  ;
-//  fCal.borey[1][11]     =HLXCal.borey[1][11]  ;
-//  fCal.boret[1][11][11] =HLXCal.boret[1][11][11];
+//  fCal.borex[1][11]     =SCCal.borex[1][11]  ;
+//  fCal.borey[1][11]     =SCCal.borey[1][11]  ;
+//  fCal.boret[1][11][11] =SCCal.boret[1][11][11];
     
 }
-*/
+
 ///////////////////////////////////////////////////////////////
 //do adjustment of bad parameters inside fCal for run
 void adjustSCTOFCalibsForRun(PSUTOFCalibs oldCal) 
@@ -415,15 +421,15 @@ void getSCTOFCalibsForRun(int runnum, bool doAdjustment = true) //Getting fCal f
   //copy previous values
   PSUTOFCalibs oldCal = fCal;
 
-//  cout << "getSCTOFCalibsForRun: fTOFcal->GetEntries() " << fTOFcal->GetEntries() << endl;
+//  cout << "getSCTOFCalibsForRun: fCalTree->GetEntries() " << fCalTree->GetEntries() << endl;
 
-  // Now that we know which run we're dealing with, scroll down fTOFcal.root to find the relevant calibration parameters
-  for (int ical = 0; ical < fTOFcal->GetEntries(); ical++) 
+  // Now that we know which run we're dealing with, scroll down fCalTree.root to find the relevant calibration parameters
+  for (int ical = 0; ical < fCalTree->GetEntries(); ical++) 
   {	
-    fTOFcal->GetEntry( ical ); // load up the calibration parameters structure for this run
+    fCalTree->GetEntry( ical ); // load up the calibration parameters structure for this run
 //    cout << "getSCTOFCalibsForRun: Checking entry: " << ical << ", fRtCal.runnum: " << fRtCal.runnum << ", runnum: " << runnum << endl;
     if (fRtCal.runnum >= runnum) {
-//      cout << "getSCTOFCalibsForRun: Setting fTOFcal entry ical " << ical << " with fRtCal.runnum = " << fRtCal.runnum << endl;
+//      cout << "getSCTOFCalibsForRun: Setting fCalTree entry ical " << ical << " with fRtCal.runnum = " << fRtCal.runnum << endl;
       runcurrent = fRtCal.runnum;
       fCal = fRtCal;  //copy INPUT to OUTPUT
       break; // now we have the parameters for this run, or at least for the next higher run number in the database
@@ -448,78 +454,78 @@ bool loadSCTOFCalibsv12(string ipfName = kInputTofcalName) //only called once V1
     exit(-1);
   }
 
-  fFile = new TFile(ipfName.c_str());
-  if (!fFile->IsOpen()) {
+  fInFile = new TFile(ipfName.c_str());
+  if (!fInFile->IsOpen()) {
     cout << "loadSCTOFCalibsv12 => could not open file: " << ipfName << endl;
     exit(-1);
   }
 
   cout << "loadSCTOFCalibsv12 : load from " << ipfName << endl;
 
-  fTOFcal = (TTree*)fFile->Get("tofcal");
+  fCalTree = (TTree*)fInFile->Get("tofcal");
 
   // global ToF parameters, same for any run number
-  fTOFcal->SetBranchAddress("pup",&fRtCal.pup);  // for each of 72 FEEs, up ramp parameters (7 of them) for GV function
+  fCalTree->SetBranchAddress("pup",&fRtCal.pup);  // for each of 72 FEEs, up ramp parameters (7 of them) for GV function
   //  up ramp:   [0]*(1.-[1]*exp(-[2]*(x-[6]))+exp(-[3]*(x-[6]))*(([1]-1.)*cos([4]*(x-[6]))-[5]*sin([4]*(x-[6]))))
-  fTOFcal->SetBranchAddress("epup",&fRtCal.epup);  // for each of 72 FEEs, error on up ramp parameters (7 of them) for GV function
-  fTOFcal->SetBranchAddress("pdn",&fRtCal.pdn);  // for each of 72 FEEs, down ramp parameters (7 of them) for GV function
+  fCalTree->SetBranchAddress("epup",&fRtCal.epup);  // for each of 72 FEEs, error on up ramp parameters (7 of them) for GV function
+  fCalTree->SetBranchAddress("pdn",&fRtCal.pdn);  // for each of 72 FEEs, down ramp parameters (7 of them) for GV function
   //  down ramp:   -[0]+[0]*(1.-[1]*exp(-[2]*(x-[6]))+exp(-[3]*(x-[6]))*(([1]-1.)*cos([4]*(x-[6]))-[5]*sin([4]*(x-[6]))))
-  fTOFcal->SetBranchAddress("epdn",&fRtCal.epdn);  // for each of 72 FEEs, error on down ramp parameters (7 of them) for GV function
-  fTOFcal->SetBranchAddress("mippk",&fRtCal.mippk);  // MIP peak, average most probable Landau fit value, used for determining the charge Z from the pulse integral between samples 11 and 25 (inclusive)
-//  fTOFcal->SetBranchAddress("interTW",&fRtCal.interTW);  // intercept for timewalk correction, for 64 pairs of paddles (set to 1. for trivial ones)
-//  fTOFcal->SetBranchAddress("slopeTW",&fRtCal.slopeTW);  // slope for timewalk correction, for 64 pairs of paddles (set to 0. for trivial ones)	
-//  fTOFcal->SetBranchAddress("einterTW",&fRtCal.einterTW);  // error on intercept for timewalk correction, for 64 pairs of paddles (set to 0.0001 for trivial ones)
-//  fTOFcal->SetBranchAddress("eslopeTW",&fRtCal.eslopeTW);  // error on slope for timewalk correction, for 64 pairs of paddles (set to 0.0001 for trivial ones)	
-//  fTOFcal->SetBranchAddress("padnum",&fRtCal.padnum);  // paddle number, HELIX style (0-7 bot, 8-15 top, 16 bore)
-//  fTOFcal->SetBranchAddress("topx",&fRtCal.topx);  // x values where we have thickness measurements for top paddles
-//  fTOFcal->SetBranchAddress("topy",&fRtCal.topy);  // y values where we have thickness measurements for top paddles
-//  fTOFcal->SetBranchAddress("topt",&fRtCal.topt);  // thickness (mm) of top paddle at topx,topy
-//  fTOFcal->SetBranchAddress("botx",&fRtCal.botx);  // x values where we have thickness measurements for bottom paddles
-//  fTOFcal->SetBranchAddress("boty",&fRtCal.boty);  // y values where we have thickness measurements for bottom paddles
-//  fTOFcal->SetBranchAddress("bott",&fRtCal.bott);  // thickness (mm) of bottom paddle at topx,topy
+  fCalTree->SetBranchAddress("epdn",&fRtCal.epdn);  // for each of 72 FEEs, error on down ramp parameters (7 of them) for GV function
+  fCalTree->SetBranchAddress("mippk",&fRtCal.mippk);  // MIP peak, average most probable Landau fit value, used for determining the charge Z from the pulse integral between samples 11 and 25 (inclusive)
+//  fCalTree->SetBranchAddress("interTW",&fRtCal.interTW);  // intercept for timewalk correction, for 64 pairs of paddles (set to 1. for trivial ones)
+//  fCalTree->SetBranchAddress("slopeTW",&fRtCal.slopeTW);  // slope for timewalk correction, for 64 pairs of paddles (set to 0. for trivial ones)	
+//  fCalTree->SetBranchAddress("einterTW",&fRtCal.einterTW);  // error on intercept for timewalk correction, for 64 pairs of paddles (set to 0.0001 for trivial ones)
+//  fCalTree->SetBranchAddress("eslopeTW",&fRtCal.eslopeTW);  // error on slope for timewalk correction, for 64 pairs of paddles (set to 0.0001 for trivial ones)	
+//  fCalTree->SetBranchAddress("padnum",&fRtCal.padnum);  // paddle number, HELIX style (0-7 bot, 8-15 top, 16 bore)
+//  fCalTree->SetBranchAddress("topx",&fRtCal.topx);  // x values where we have thickness measurements for top paddles
+//  fCalTree->SetBranchAddress("topy",&fRtCal.topy);  // y values where we have thickness measurements for top paddles
+//  fCalTree->SetBranchAddress("topt",&fRtCal.topt);  // thickness (mm) of top paddle at topx,topy
+//  fCalTree->SetBranchAddress("botx",&fRtCal.botx);  // x values where we have thickness measurements for bottom paddles
+//  fCalTree->SetBranchAddress("boty",&fRtCal.boty);  // y values where we have thickness measurements for bottom paddles
+//  fCalTree->SetBranchAddress("bott",&fRtCal.bott);  // thickness (mm) of bottom paddle at topx,topy
 
   // ToF calibration parameters that change with run number
 
-  fTOFcal->SetBranchAddress("runnum",&fRtCal.runnum);  // run number
-  fTOFcal->SetBranchAddress("nument",&fRtCal.nument);  // number of entries in that run
-  fTOFcal->SetBranchAddress("runtime",&fRtCal.runtime);  // time of the first event in the run, in days since 1st event in run 14753
-  fTOFcal->SetBranchAddress("pedm",&fRtCal.pedm);  // for each of 72 FEEs, mean value of the charge pedestal for this run
-  fTOFcal->SetBranchAddress("rms",&fRtCal.rms);  // for each of 72 FEEs, rms of the charge pedestal peak for this run
-  fTOFcal->SetBranchAddress("mpv",&fRtCal.mpv);  // for each of 72 FEEs, most probable charge value of the pedestal-subtracted signal for this run
-  fTOFcal->SetBranchAddress("empv",&fRtCal.empv);  // for each of 72 FEEs, uncertainty on the mpv value of the pedestal-subtracted charge signal for this run
-  fTOFcal->SetBranchAddress("etoeshift",&fRtCal.etoeshift);  // for each of 17 paddles, average time shift (in samples) between the two ends for this run (top: 0-7, bore: 8, bottom: 9-16)
+  fCalTree->SetBranchAddress("runnum",&fRtCal.runnum);  // run number
+  fCalTree->SetBranchAddress("nument",&fRtCal.nument);  // number of entries in that run
+  fCalTree->SetBranchAddress("runtime",&fRtCal.runtime);  // time of the first event in the run, in days since 1st event in run 14753
+  fCalTree->SetBranchAddress("pedm",&fRtCal.pedm);  // for each of 72 FEEs, mean value of the charge pedestal for this run
+  fCalTree->SetBranchAddress("rms",&fRtCal.rms);  // for each of 72 FEEs, rms of the charge pedestal peak for this run
+  fCalTree->SetBranchAddress("mpv",&fRtCal.mpv);  // for each of 72 FEEs, most probable charge value of the pedestal-subtracted signal for this run
+  fCalTree->SetBranchAddress("empv",&fRtCal.empv);  // for each of 72 FEEs, uncertainty on the mpv value of the pedestal-subtracted charge signal for this run
+  fCalTree->SetBranchAddress("etoeshift",&fRtCal.etoeshift);  // for each of 17 paddles, average time shift (in samples) between the two ends for this run (top: 0-7, bore: 8, bottom: 9-16)
   // for the following arrays of size 40: top are 0-15, bore are 16-23, bottom are 24-39;
   // top order is 0E, 0W, 1E, 1W, 2E, 2W, 3E, 3W, 4E, 4W, 5E, 5W, 6E, 6W, 7E, 7W
   // bore order is 00E, 01E, 12E, 23E, 00W, 01W, 12W, 23W   where 00E and 00W can be ignored 
   // bottom order is 0E, 0W, 1E, 1W, 2E, 2W, 3E, 3W, 4E, 4W, 5E, 5W, 6E, 6W, 7E, 7W
-  fTOFcal->SetBranchAddress("peakuu",&fRtCal.peakuu);  // for each pair of side-by-side FEEs, shifted time difference in sample units when ramps are up+up
-  fTOFcal->SetBranchAddress("widthuu",&fRtCal.widthuu);  // for each pair of side-by-side FEEs, sigma of shifted time difference in sample units when ramps are up+up
-  fTOFcal->SetBranchAddress("peakud",&fRtCal.peakud);  // for each pair of side-by-side FEEs, shifted time difference in sample units when ramps are up+dn
-  fTOFcal->SetBranchAddress("widthud",&fRtCal.widthud);  // for each pair of side-by-side FEEs, sigma of shifted time difference in sample units when ramps are up+dn
-  fTOFcal->SetBranchAddress("peakdu",&fRtCal.peakdu);  // for each pair of side-by-side FEEs, shifted time difference in sample units when ramps are dn+up
-  fTOFcal->SetBranchAddress("widthdu",&fRtCal.widthdu);  // for each pair of side-by-side FEEs, sigma of shifted time difference in sample units when ramps are dn+up
-  fTOFcal->SetBranchAddress("peakdd",&fRtCal.peakdd);  // for each pair of side-by-side FEEs, shifted time difference in sample units when ramps are dn+dn
-  fTOFcal->SetBranchAddress("widthdd",&fRtCal.widthdd);  // for each pair of side-by-side FEEs, sigma of shifted time difference in sample units when ramps are dn+dn
+  fCalTree->SetBranchAddress("peakuu",&fRtCal.peakuu);  // for each pair of side-by-side FEEs, shifted time difference in sample units when ramps are up+up
+  fCalTree->SetBranchAddress("widthuu",&fRtCal.widthuu);  // for each pair of side-by-side FEEs, sigma of shifted time difference in sample units when ramps are up+up
+  fCalTree->SetBranchAddress("peakud",&fRtCal.peakud);  // for each pair of side-by-side FEEs, shifted time difference in sample units when ramps are up+dn
+  fCalTree->SetBranchAddress("widthud",&fRtCal.widthud);  // for each pair of side-by-side FEEs, sigma of shifted time difference in sample units when ramps are up+dn
+  fCalTree->SetBranchAddress("peakdu",&fRtCal.peakdu);  // for each pair of side-by-side FEEs, shifted time difference in sample units when ramps are dn+up
+  fCalTree->SetBranchAddress("widthdu",&fRtCal.widthdu);  // for each pair of side-by-side FEEs, sigma of shifted time difference in sample units when ramps are dn+up
+  fCalTree->SetBranchAddress("peakdd",&fRtCal.peakdd);  // for each pair of side-by-side FEEs, shifted time difference in sample units when ramps are dn+dn
+  fCalTree->SetBranchAddress("widthdd",&fRtCal.widthdd);  // for each pair of side-by-side FEEs, sigma of shifted time difference in sample units when ramps are dn+dn
     
   //new branches from tofcal12:
   //Position from fChargeDivFrac by run:
-  fTOFcal->SetBranchAddress("ZDm",  fRtCal.ZDm );  //paddle slope, from DCTY vs fChargeDivFrac: fChargeDivFracPos = m*ChargeDivFrac + b
-  fTOFcal->SetBranchAddress("ZDb",  fRtCal.ZDb );  //paddle intercept, from DCTY vs fChargeDivFrac: fChargeDivFracPos = m*ChargeDivFrac + b
+  fCalTree->SetBranchAddress("ZDm",  fRtCal.ZDm );  //paddle slope, from DCTY vs fChargeDivFrac: fChargeDivFracPos = m*ChargeDivFrac + b
+  fCalTree->SetBranchAddress("ZDb",  fRtCal.ZDb );  //paddle intercept, from DCTY vs fChargeDivFrac: fChargeDivFracPos = m*ChargeDivFrac + b
   //Position from fTimeDiff by run:
-  fTOFcal->SetBranchAddress("TDm",  fRtCal.TDm );  //paddle slope, from DCTY vs fTimeDiff: fTimeDiffPos = m*fTimeDiff + b
-  fTOFcal->SetBranchAddress("TDb",  fRtCal.TDb );  //paddle intercept, from DCTY vs fTimeDiff: fTimeDiffPos = m*fTimeDiff + b
+  fCalTree->SetBranchAddress("TDm",  fRtCal.TDm );  //paddle slope, from DCTY vs fTimeDiff: fTimeDiffPos = m*fTimeDiff + b
+  fCalTree->SetBranchAddress("TDb",  fRtCal.TDb );  //paddle intercept, from DCTY vs fTimeDiff: fTimeDiffPos = m*fTimeDiff + b
 
   //better scheme for top and bottom paddle thickness measurements. NB: EVENTUALLY MOVE THIS TO SINGLE READ IN SEPARATE OBJECT IN tofcal root FILE, NOT IN TREE!
-  fTOFcal->SetBranchAddress("padx", fRtCal.padx);  // x values where we have thickness measurements for top and bot paddles in HELIX numbering scheme
-  fTOFcal->SetBranchAddress("pady", fRtCal.pady);  // y values where we have thickness measurements for top and bot paddles in HELIX numbering scheme
-  fTOFcal->SetBranchAddress("padt", fRtCal.padt);  // thickness (mm) of top paddle at padx,pady  
+  fCalTree->SetBranchAddress("padx", fRtCal.padx);  // x values where we have thickness measurements for top and bot paddles in HELIX numbering scheme
+  fCalTree->SetBranchAddress("pady", fRtCal.pady);  // y values where we have thickness measurements for top and bot paddles in HELIX numbering scheme
+  fCalTree->SetBranchAddress("padt", fRtCal.padt);  // thickness (mm) of top paddle at padx,pady  
   //keep bore stuff:
-  fTOFcal->SetBranchAddress("borex", fRtCal.borex);  // x values where we have thickness measurements for bore paddle
-  fTOFcal->SetBranchAddress("borey", fRtCal.borey);  // y values where we have thickness measurements for bore paddle
-  fTOFcal->SetBranchAddress("boret", fRtCal.boret);  // thickness (mm) of bore paddle at topx,topy
+  fCalTree->SetBranchAddress("borex", fRtCal.borex);  // x values where we have thickness measurements for bore paddle
+  fCalTree->SetBranchAddress("borey", fRtCal.borey);  // y values where we have thickness measurements for bore paddle
+  fCalTree->SetBranchAddress("boret", fRtCal.boret);  // thickness (mm) of bore paddle at topx,topy
 
   //make copy in case of mods:
-  fTOFcal->GetEntry( 0 ); // load up the calibration parameters structure for first run
+  fCalTree->GetEntry( 0 ); // load up the calibration parameters structure for first run
   fCal = fRtCal;
 
   getSCTOFCalibsForRun( 14765 ); //set default values
@@ -527,79 +533,163 @@ bool loadSCTOFCalibsv12(string ipfName = kInputTofcalName) //only called once V1
   return kTRUE;
 
 }
-/*
-///////////////////////////////////////////////////////////////
+
 // Open INPUT SCTOF parameter file (root TTree organized by run number)
-bool loadSCTOFCalibs(string ipfName = kInputTofcalName) //only called once V11 and before!
+bool loadSCTOFCalMergeFilev12(string ipfName = kMergeInputTofcalName) //only called once V12 and after!
 {
   ////////  NB: put checks here to make sure file is not already open?  /////////  
 
   if (!std::filesystem::exists(ipfName.c_str())) {
-    cout << "loadSCTOFCalibs => file not found: " << ipfName << endl;
+    cout << "loadSCTOFCalMergeFilev12 => file not found: " << ipfName << endl;
     exit(-1);
   }
 
-  fFile = new TFile(ipfName.c_str());
-  if (!fFile->IsOpen()) {
-    cout << "loadSCTOFCalibs => could not open file: " << ipfName << endl;
+  fInFile = new TFile(ipfName.c_str());
+  if (!fInFile->IsOpen()) {
+    cout << "loadSCTOFCalMergeFilev12 => could not open file: " << ipfName << endl;
     exit(-1);
   }
 
-  cout << "loadSCTOFCalibs : load from " << ipfName << endl;
+  cout << "loadSCTOFCalMergeFilev12 : load from " << ipfName << endl;
 
-  fTOFcal = (TTree*)fFile->Get("tofcal");
-//  fTOFcal = new TChain( "tofcal", "chain" );
-//  fTOFcal->Add( "tofcal6.root");  // new database with a different TW correction scheme, small bug fixed in ped determination 
-//  TTree *fTOFcal = new TTree( "tofcal", "tofcal6.root" );
+  fMergeCalTree = (TTree*)fInFile->Get("tofcal");
 
   // global ToF parameters, same for any run number
-  fTOFcal->SetBranchAddress("pup",&fRtCal.pup);  // for each of 72 FEEs, up ramp parameters (7 of them) for GV function
+  fMergeCalTree->SetBranchAddress("pup",&fMergeCal.pup);  // for each of 72 FEEs, up ramp parameters (7 of them) for GV function
   //  up ramp:   [0]*(1.-[1]*exp(-[2]*(x-[6]))+exp(-[3]*(x-[6]))*(([1]-1.)*cos([4]*(x-[6]))-[5]*sin([4]*(x-[6]))))
-  fTOFcal->SetBranchAddress("epup",&fRtCal.epup);  // for each of 72 FEEs, error on up ramp parameters (7 of them) for GV function
-  fTOFcal->SetBranchAddress("pdn",&fRtCal.pdn);  // for each of 72 FEEs, down ramp parameters (7 of them) for GV function
+  fMergeCalTree->SetBranchAddress("epup",&fMergeCal.epup);  // for each of 72 FEEs, error on up ramp parameters (7 of them) for GV function
+  fMergeCalTree->SetBranchAddress("pdn",&fMergeCal.pdn);  // for each of 72 FEEs, down ramp parameters (7 of them) for GV function
   //  down ramp:   -[0]+[0]*(1.-[1]*exp(-[2]*(x-[6]))+exp(-[3]*(x-[6]))*(([1]-1.)*cos([4]*(x-[6]))-[5]*sin([4]*(x-[6]))))
-  fTOFcal->SetBranchAddress("epdn",&fRtCal.epdn);  // for each of 72 FEEs, error on down ramp parameters (7 of them) for GV function
-  fTOFcal->SetBranchAddress("mippk",&fRtCal.mippk);  // MIP peak, average most probable Landau fit value, used for determining the charge Z from the pulse integral between samples 11 and 25 (inclusive)
-  fTOFcal->SetBranchAddress("interTW",&fRtCal.interTW);  // intercept for timewalk correction, for 64 pairs of paddles (set to 1. for trivial ones)
-  fTOFcal->SetBranchAddress("slopeTW",&fRtCal.slopeTW);  // slope for timewalk correction, for 64 pairs of paddles (set to 0. for trivial ones)	
-  fTOFcal->SetBranchAddress("einterTW",&fRtCal.einterTW);  // error on intercept for timewalk correction, for 64 pairs of paddles (set to 0.0001 for trivial ones)
-  fTOFcal->SetBranchAddress("eslopeTW",&fRtCal.eslopeTW);  // error on slope for timewalk correction, for 64 pairs of paddles (set to 0.0001 for trivial ones)	
-  fTOFcal->SetBranchAddress("padnum",&fRtCal.padnum);  // paddle number, HELIX style (0-7 bot, 8-15 top, 16 bore)
-  fTOFcal->SetBranchAddress("topx",&fRtCal.topx);  // x values where we have thickness measurements for top paddles
-  fTOFcal->SetBranchAddress("topy",&fRtCal.topy);  // y values where we have thickness measurements for top paddles
-  fTOFcal->SetBranchAddress("topt",&fRtCal.topt);  // thickness (mm) of top paddle at topx,topy
-  fTOFcal->SetBranchAddress("botx",&fRtCal.botx);  // x values where we have thickness measurements for bottom paddles
-  fTOFcal->SetBranchAddress("boty",&fRtCal.boty);  // y values where we have thickness measurements for bottom paddles
-  fTOFcal->SetBranchAddress("bott",&fRtCal.bott);  // thickness (mm) of bottom paddle at topx,topy
-  fTOFcal->SetBranchAddress("borex",&fRtCal.borex);  // x values where we have thickness measurements for bore paddle
-  fTOFcal->SetBranchAddress("borey",&fRtCal.borey);  // y values where we have thickness measurements for bore paddle
-  fTOFcal->SetBranchAddress("boret",&fRtCal.boret);  // thickness (mm) of bore paddle at topx,topy
+  fMergeCalTree->SetBranchAddress("epdn",&fMergeCal.epdn);  // for each of 72 FEEs, error on down ramp parameters (7 of them) for GV function
+  fMergeCalTree->SetBranchAddress("mippk",&fMergeCal.mippk);  // MIP peak, average most probable Landau fit value, used for determining the charge Z from the pulse integral between samples 11 and 25 (inclusive)
+//  fMergeCalTree->SetBranchAddress("interTW",&fMergeCal.interTW);  // intercept for timewalk correction, for 64 pairs of paddles (set to 1. for trivial ones)
+//  fMergeCalTree->SetBranchAddress("slopeTW",&fMergeCal.slopeTW);  // slope for timewalk correction, for 64 pairs of paddles (set to 0. for trivial ones)	
+//  fMergeCalTree->SetBranchAddress("einterTW",&fMergeCal.einterTW);  // error on intercept for timewalk correction, for 64 pairs of paddles (set to 0.0001 for trivial ones)
+//  fMergeCalTree->SetBranchAddress("eslopeTW",&fMergeCal.eslopeTW);  // error on slope for timewalk correction, for 64 pairs of paddles (set to 0.0001 for trivial ones)	
+//  fMergeCalTree->SetBranchAddress("padnum",&fMergeCal.padnum);  // paddle number, HELIX style (0-7 bot, 8-15 top, 16 bore)
+//  fMergeCalTree->SetBranchAddress("topx",&fMergeCal.topx);  // x values where we have thickness measurements for top paddles
+//  fMergeCalTree->SetBranchAddress("topy",&fMergeCal.topy);  // y values where we have thickness measurements for top paddles
+//  fMergeCalTree->SetBranchAddress("topt",&fMergeCal.topt);  // thickness (mm) of top paddle at topx,topy
+//  fMergeCalTree->SetBranchAddress("botx",&fMergeCal.botx);  // x values where we have thickness measurements for bottom paddles
+//  fMergeCalTree->SetBranchAddress("boty",&fMergeCal.boty);  // y values where we have thickness measurements for bottom paddles
+//  fMergeCalTree->SetBranchAddress("bott",&fMergeCal.bott);  // thickness (mm) of bottom paddle at topx,topy
 
   // ToF calibration parameters that change with run number
 
-  fTOFcal->SetBranchAddress("runnum",&fRtCal.runnum);  // run number
-  fTOFcal->SetBranchAddress("nument",&fRtCal.nument);  // number of entries in that run
-  fTOFcal->SetBranchAddress("runtime",&fRtCal.runtime);  // time of the first event in the run, in days since 1st event in run 14753
-  fTOFcal->SetBranchAddress("pedm",&fRtCal.pedm);  // for each of 72 FEEs, mean value of the charge pedestal for this run
-  fTOFcal->SetBranchAddress("rms",&fRtCal.rms);  // for each of 72 FEEs, rms of the charge pedestal peak for this run
-  fTOFcal->SetBranchAddress("mpv",&fRtCal.mpv);  // for each of 72 FEEs, most probable charge value of the pedestal-subtracted signal for this run
-  fTOFcal->SetBranchAddress("empv",&fRtCal.empv);  // for each of 72 FEEs, uncertainty on the mpv value of the pedestal-subtracted charge signal for this run
-  fTOFcal->SetBranchAddress("etoeshift",&fRtCal.etoeshift);  // for each of 17 paddles, average time shift (in samples) between the two ends for this run (top: 0-7, bore: 8, bottom: 9-16)
+  fMergeCalTree->SetBranchAddress("runnum",&fMergeCal.runnum);  // run number
+  fMergeCalTree->SetBranchAddress("nument",&fMergeCal.nument);  // number of entries in that run
+  fMergeCalTree->SetBranchAddress("runtime",&fMergeCal.runtime);  // time of the first event in the run, in days since 1st event in run 14753
+  fMergeCalTree->SetBranchAddress("pedm",&fMergeCal.pedm);  // for each of 72 FEEs, mean value of the charge pedestal for this run
+  fMergeCalTree->SetBranchAddress("rms",&fMergeCal.rms);  // for each of 72 FEEs, rms of the charge pedestal peak for this run
+  fMergeCalTree->SetBranchAddress("mpv",&fMergeCal.mpv);  // for each of 72 FEEs, most probable charge value of the pedestal-subtracted signal for this run
+  fMergeCalTree->SetBranchAddress("empv",&fMergeCal.empv);  // for each of 72 FEEs, uncertainty on the mpv value of the pedestal-subtracted charge signal for this run
+  fMergeCalTree->SetBranchAddress("etoeshift",&fMergeCal.etoeshift);  // for each of 17 paddles, average time shift (in samples) between the two ends for this run (top: 0-7, bore: 8, bottom: 9-16)
   // for the following arrays of size 40: top are 0-15, bore are 16-23, bottom are 24-39;
   // top order is 0E, 0W, 1E, 1W, 2E, 2W, 3E, 3W, 4E, 4W, 5E, 5W, 6E, 6W, 7E, 7W
   // bore order is 00E, 01E, 12E, 23E, 00W, 01W, 12W, 23W   where 00E and 00W can be ignored 
   // bottom order is 0E, 0W, 1E, 1W, 2E, 2W, 3E, 3W, 4E, 4W, 5E, 5W, 6E, 6W, 7E, 7W
-  fTOFcal->SetBranchAddress("peakuu",&fRtCal.peakuu);  // for each pair of side-by-side FEEs, shifted time difference in sample units when ramps are up+up
-  fTOFcal->SetBranchAddress("widthuu",&fRtCal.widthuu);  // for each pair of side-by-side FEEs, sigma of shifted time difference in sample units when ramps are up+up
-  fTOFcal->SetBranchAddress("peakud",&fRtCal.peakud);  // for each pair of side-by-side FEEs, shifted time difference in sample units when ramps are up+dn
-  fTOFcal->SetBranchAddress("widthud",&fRtCal.widthud);  // for each pair of side-by-side FEEs, sigma of shifted time difference in sample units when ramps are up+dn
-  fTOFcal->SetBranchAddress("peakdu",&fRtCal.peakdu);  // for each pair of side-by-side FEEs, shifted time difference in sample units when ramps are dn+up
-  fTOFcal->SetBranchAddress("widthdu",&fRtCal.widthdu);  // for each pair of side-by-side FEEs, sigma of shifted time difference in sample units when ramps are dn+up
-  fTOFcal->SetBranchAddress("peakdd",&fRtCal.peakdd);  // for each pair of side-by-side FEEs, shifted time difference in sample units when ramps are dn+dn
-  fTOFcal->SetBranchAddress("widthdd",&fRtCal.widthdd);  // for each pair of side-by-side FEEs, sigma of shifted time difference in sample units when ramps are dn+dn
+  fMergeCalTree->SetBranchAddress("peakuu",&fMergeCal.peakuu);  // for each pair of side-by-side FEEs, shifted time difference in sample units when ramps are up+up
+  fMergeCalTree->SetBranchAddress("widthuu",&fMergeCal.widthuu);  // for each pair of side-by-side FEEs, sigma of shifted time difference in sample units when ramps are up+up
+  fMergeCalTree->SetBranchAddress("peakud",&fMergeCal.peakud);  // for each pair of side-by-side FEEs, shifted time difference in sample units when ramps are up+dn
+  fMergeCalTree->SetBranchAddress("widthud",&fMergeCal.widthud);  // for each pair of side-by-side FEEs, sigma of shifted time difference in sample units when ramps are up+dn
+  fMergeCalTree->SetBranchAddress("peakdu",&fMergeCal.peakdu);  // for each pair of side-by-side FEEs, shifted time difference in sample units when ramps are dn+up
+  fMergeCalTree->SetBranchAddress("widthdu",&fMergeCal.widthdu);  // for each pair of side-by-side FEEs, sigma of shifted time difference in sample units when ramps are dn+up
+  fMergeCalTree->SetBranchAddress("peakdd",&fMergeCal.peakdd);  // for each pair of side-by-side FEEs, shifted time difference in sample units when ramps are dn+dn
+  fMergeCalTree->SetBranchAddress("widthdd",&fMergeCal.widthdd);  // for each pair of side-by-side FEEs, sigma of shifted time difference in sample units when ramps are dn+dn
+    
+  //new branches from tofcal12:
+  //Position from fChargeDivFrac by run:
+  fMergeCalTree->SetBranchAddress("ZDm",  fMergeCal.ZDm );  //paddle slope, from DCTY vs fChargeDivFrac: fChargeDivFracPos = m*ChargeDivFrac + b
+  fMergeCalTree->SetBranchAddress("ZDb",  fMergeCal.ZDb );  //paddle intercept, from DCTY vs fChargeDivFrac: fChargeDivFracPos = m*ChargeDivFrac + b
+  //Position from fTimeDiff by run:
+  fMergeCalTree->SetBranchAddress("TDm",  fMergeCal.TDm );  //paddle slope, from DCTY vs fTimeDiff: fTimeDiffPos = m*fTimeDiff + b
+  fMergeCalTree->SetBranchAddress("TDb",  fMergeCal.TDb );  //paddle intercept, from DCTY vs fTimeDiff: fTimeDiffPos = m*fTimeDiff + b
+
+  //better scheme for top and bottom paddle thickness measurements. NB: EVENTUALLY MOVE THIS TO SINGLE READ IN SEPARATE OBJECT IN tofcal root FILE, NOT IN TREE!
+  fMergeCalTree->SetBranchAddress("padx", fMergeCal.padx);  // x values where we have thickness measurements for top and bot paddles in HELIX numbering scheme
+  fMergeCalTree->SetBranchAddress("pady", fMergeCal.pady);  // y values where we have thickness measurements for top and bot paddles in HELIX numbering scheme
+  fMergeCalTree->SetBranchAddress("padt", fMergeCal.padt);  // thickness (mm) of top paddle at padx,pady  
+  //keep bore stuff:
+  fMergeCalTree->SetBranchAddress("borex", fMergeCal.borex);  // x values where we have thickness measurements for bore paddle
+  fMergeCalTree->SetBranchAddress("borey", fMergeCal.borey);  // y values where we have thickness measurements for bore paddle
+  fMergeCalTree->SetBranchAddress("boret", fMergeCal.boret);  // thickness (mm) of bore paddle at topx,topy
+  
+  return kTRUE;
+
+}
+
+///////////////////////////////////////////////////////////////
+// Open INPUT SCTOF parameter file (root TTree organized by run number)
+bool loadSCTOFCalibsv11(string ipfName = kInputTofcalName) //only called once V11 and before!
+{
+  ////////  NB: put checks here to make sure file is not already open?  /////////  
+
+  if (!std::filesystem::exists(ipfName.c_str())) {
+    cout << "loadSCTOFCalibsv11 => file not found: " << ipfName << endl;
+    exit(-1);
+  }
+
+  fInFile = new TFile(ipfName.c_str());
+  if (!fInFile->IsOpen()) {
+    cout << "loadSCTOFCalibs => could not open file: " << ipfName << endl;
+    exit(-1);
+  }
+
+  cout << "loadSCTOFCalibsv11 : load from " << ipfName << endl;
+
+  fCalTree = (TTree*)fInFile->Get("tofcal");
+//  fCalTree = new TChain( "tofcal", "chain" );
+//  fCalTree->Add( "tofcal6.root");  // new database with a different TW correction scheme, small bug fixed in ped determination 
+//  TTree *fCalTree = new TTree( "tofcal", "tofcal6.root" );
+
+  // global ToF parameters, same for any run number
+  fCalTree->SetBranchAddress("pup",&fRtCal.pup);  // for each of 72 FEEs, up ramp parameters (7 of them) for GV function
+  //  up ramp:   [0]*(1.-[1]*exp(-[2]*(x-[6]))+exp(-[3]*(x-[6]))*(([1]-1.)*cos([4]*(x-[6]))-[5]*sin([4]*(x-[6]))))
+  fCalTree->SetBranchAddress("epup",&fRtCal.epup);  // for each of 72 FEEs, error on up ramp parameters (7 of them) for GV function
+  fCalTree->SetBranchAddress("pdn",&fRtCal.pdn);  // for each of 72 FEEs, down ramp parameters (7 of them) for GV function
+  //  down ramp:   -[0]+[0]*(1.-[1]*exp(-[2]*(x-[6]))+exp(-[3]*(x-[6]))*(([1]-1.)*cos([4]*(x-[6]))-[5]*sin([4]*(x-[6]))))
+  fCalTree->SetBranchAddress("epdn",&fRtCal.epdn);  // for each of 72 FEEs, error on down ramp parameters (7 of them) for GV function
+  fCalTree->SetBranchAddress("mippk",&fRtCal.mippk);  // MIP peak, average most probable Landau fit value, used for determining the charge Z from the pulse integral between samples 11 and 25 (inclusive)
+  fCalTree->SetBranchAddress("interTW",&fRtCal.interTW);  // intercept for timewalk correction, for 64 pairs of paddles (set to 1. for trivial ones)
+  fCalTree->SetBranchAddress("slopeTW",&fRtCal.slopeTW);  // slope for timewalk correction, for 64 pairs of paddles (set to 0. for trivial ones)	
+  fCalTree->SetBranchAddress("einterTW",&fRtCal.einterTW);  // error on intercept for timewalk correction, for 64 pairs of paddles (set to 0.0001 for trivial ones)
+  fCalTree->SetBranchAddress("eslopeTW",&fRtCal.eslopeTW);  // error on slope for timewalk correction, for 64 pairs of paddles (set to 0.0001 for trivial ones)	
+  fCalTree->SetBranchAddress("padnum",&fRtCal.padnum);  // paddle number, HELIX style (0-7 bot, 8-15 top, 16 bore)
+  fCalTree->SetBranchAddress("topx",&fRtCal.topx);  // x values where we have thickness measurements for top paddles
+  fCalTree->SetBranchAddress("topy",&fRtCal.topy);  // y values where we have thickness measurements for top paddles
+  fCalTree->SetBranchAddress("topt",&fRtCal.topt);  // thickness (mm) of top paddle at topx,topy
+  fCalTree->SetBranchAddress("botx",&fRtCal.botx);  // x values where we have thickness measurements for bottom paddles
+  fCalTree->SetBranchAddress("boty",&fRtCal.boty);  // y values where we have thickness measurements for bottom paddles
+  fCalTree->SetBranchAddress("bott",&fRtCal.bott);  // thickness (mm) of bottom paddle at topx,topy
+  fCalTree->SetBranchAddress("borex",&fRtCal.borex);  // x values where we have thickness measurements for bore paddle
+  fCalTree->SetBranchAddress("borey",&fRtCal.borey);  // y values where we have thickness measurements for bore paddle
+  fCalTree->SetBranchAddress("boret",&fRtCal.boret);  // thickness (mm) of bore paddle at topx,topy
+
+  // ToF calibration parameters that change with run number
+
+  fCalTree->SetBranchAddress("runnum",&fRtCal.runnum);  // run number
+  fCalTree->SetBranchAddress("nument",&fRtCal.nument);  // number of entries in that run
+  fCalTree->SetBranchAddress("runtime",&fRtCal.runtime);  // time of the first event in the run, in days since 1st event in run 14753
+  fCalTree->SetBranchAddress("pedm",&fRtCal.pedm);  // for each of 72 FEEs, mean value of the charge pedestal for this run
+  fCalTree->SetBranchAddress("rms",&fRtCal.rms);  // for each of 72 FEEs, rms of the charge pedestal peak for this run
+  fCalTree->SetBranchAddress("mpv",&fRtCal.mpv);  // for each of 72 FEEs, most probable charge value of the pedestal-subtracted signal for this run
+  fCalTree->SetBranchAddress("empv",&fRtCal.empv);  // for each of 72 FEEs, uncertainty on the mpv value of the pedestal-subtracted charge signal for this run
+  fCalTree->SetBranchAddress("etoeshift",&fRtCal.etoeshift);  // for each of 17 paddles, average time shift (in samples) between the two ends for this run (top: 0-7, bore: 8, bottom: 9-16)
+  // for the following arrays of size 40: top are 0-15, bore are 16-23, bottom are 24-39;
+  // top order is 0E, 0W, 1E, 1W, 2E, 2W, 3E, 3W, 4E, 4W, 5E, 5W, 6E, 6W, 7E, 7W
+  // bore order is 00E, 01E, 12E, 23E, 00W, 01W, 12W, 23W   where 00E and 00W can be ignored 
+  // bottom order is 0E, 0W, 1E, 1W, 2E, 2W, 3E, 3W, 4E, 4W, 5E, 5W, 6E, 6W, 7E, 7W
+  fCalTree->SetBranchAddress("peakuu",&fRtCal.peakuu);  // for each pair of side-by-side FEEs, shifted time difference in sample units when ramps are up+up
+  fCalTree->SetBranchAddress("widthuu",&fRtCal.widthuu);  // for each pair of side-by-side FEEs, sigma of shifted time difference in sample units when ramps are up+up
+  fCalTree->SetBranchAddress("peakud",&fRtCal.peakud);  // for each pair of side-by-side FEEs, shifted time difference in sample units when ramps are up+dn
+  fCalTree->SetBranchAddress("widthud",&fRtCal.widthud);  // for each pair of side-by-side FEEs, sigma of shifted time difference in sample units when ramps are up+dn
+  fCalTree->SetBranchAddress("peakdu",&fRtCal.peakdu);  // for each pair of side-by-side FEEs, shifted time difference in sample units when ramps are dn+up
+  fCalTree->SetBranchAddress("widthdu",&fRtCal.widthdu);  // for each pair of side-by-side FEEs, sigma of shifted time difference in sample units when ramps are dn+up
+  fCalTree->SetBranchAddress("peakdd",&fRtCal.peakdd);  // for each pair of side-by-side FEEs, shifted time difference in sample units when ramps are dn+dn
+  fCalTree->SetBranchAddress("widthdd",&fRtCal.widthdd);  // for each pair of side-by-side FEEs, sigma of shifted time difference in sample units when ramps are dn+dn
     
   //make copy in case of mods:
-  fTOFcal->GetEntry( 0 ); // load up the calibration parameters structure for first run
+  fCalTree->GetEntry( 0 ); // load up the calibration parameters structure for first run
   fCal = fRtCal;
 
   getSCTOFCalibsForRun( 14765 ); //set default values
@@ -607,7 +697,40 @@ bool loadSCTOFCalibs(string ipfName = kInputTofcalName) //only called once V11 a
   return kTRUE;
 
 }
-*/
+
+void convertTofcalv11tov12() //one time pass through all *tofcal* entries and writing out to a new tofcal tree
+{
+  // Load INPUT tofcal calibration data
+  loadSCTOFCalibsv11();
+//  loadSCTOFCalibsv12();
+  
+  //set up OUTPUT tofcal calibration  
+  createSCTOFCalibs();
+  
+  int nentries = fCalTree->GetEntries();
+  //loop thorugh tofcal entries
+  for (int i=0; i<nentries; i++)
+  {
+    fCalTree->GetEntry(i);
+    int runnum = fRtCal.runnum;
+//    cout << "Converting entry, run: " << i << ",  " << runnum << endl; 
+
+    //get current set of tofcal parameters:
+    //unecessary because fCalTree-GetEntry() fills fCal.
+    getSCTOFCalibsForRun(runnum, false);  //don't do adjustment of bad parameters
+
+    //switch numbering scheme for this entry v11->v12:
+    switchfCaltoHLXNumbering();
+
+    //fill modified tofcal ttree 
+    fOUTTOFcal->Fill();
+  }
+  
+  //finalize output calib file and tree:
+  fOUTTOFcal->Write();
+  fOutFile->Close();  
+}
+
 void modifyTofcal() //one time pass through all *tofcal* entries and writing out to a new tofcal tree
 {
   // Load INPUT tofcal calibration data
@@ -616,23 +739,102 @@ void modifyTofcal() //one time pass through all *tofcal* entries and writing out
   //set up OUTPUT tofcal calibration  
   createSCTOFCalibs();
   
-  int nentries = fTOFcal->GetEntries();
+  int nentries = fCalTree->GetEntries();
   //loop thorugh tofcal entries
   for (int i=0; i<nentries; i++)
   {
-    fTOFcal->GetEntry(i);
+    fCalTree->GetEntry(i);
+    int runnum = fRtCal.runnum;
+//    cout << "Converting entry, run: " << i << ",  " << runnum << endl; 
+
+    //get current set of tofcal parameters:
+    //unecessary because fCalTree-GetEntry() fills fCal.
+//    getSCTOFCalibsForRun(runnum, false);  //don't do adjustment of bad parameters
+
+    //add or modify branches:
+    fillFitSlopeIntercepts(runnum);
+    
+
+    //fill modified tofcal ttree 
+    fOUTTOFcal->Fill();
+  }
+  
+  //finalize output calib file and tree:
+  fOUTTOFcal->Write();
+  fOutFile->Close();  
+}
+
+void updateSelectedRuns() //one time pass through all *tofcal* entries and writing out to a new tofcal tree
+{
+  //list of slected runs:
+  vector<int> runList{14788, 14830, 14844, 14851, 14899, 15031, 15164, 15176, 15184};
+  
+  // Load INPUT tofcal calibration data
+  loadSCTOFCalibsv12();
+  loadSCTOFCalMergeFilev12();
+  
+  //set up OUTPUT tofcal calibration  
+  createSCTOFCalibs();
+  
+  int nentries = fCalTree->GetEntries();
+  //loop thorugh tofcal entries
+  for (int i=0; i<nentries; i++)
+  {
+    fCalTree->GetEntry(i);
     int runnum = fRtCal.runnum;
 //    cout << "Converting entry, run: " << i << ",  " << runnum << endl; 
 
     //get current set of tofcal parameters:
     getSCTOFCalibsForRun(runnum, false);  //don't do adjustment of bad parameters
 
-    //switch numbering scheme for this entry v11->v12:
-//    switchfCaltoHLXNumbering();
+    //fill particular branches if special run
+    if (std::find(runList.begin(), runList.end(), runnum) != runList.end())
+    {
+      cout << "Found run " << runnum << endl;
+      //scroll through merge tree to find right run
+      for (int k=0; k<fMergeCalTree->GetEntries(); k++)
+      {
+        fMergeCalTree->GetEntry(k);
+        if (fMergeCal.runnum == fCal.runnum) break;
+      }
+      cout << "Loaded merge event with runnum " << fMergeCal.runnum << endl;
+      cout << "nument for fCal, fMergeCal: " << fCal.nument << "\t" << fMergeCal.nument << endl;
+      cout << "runtime for fCal, fMergeCal: " << fCal.runtime << "\t" << fMergeCal.runtime << endl;
+      fCal.runtime = fMergeCal.runtime;
+      fCal.nument  = fMergeCal.nument;
+      cout << "After: nument for fCal, fMergeCal: " << fCal.nument << "\t" << fMergeCal.nument << endl;
+      cout << "After: runtime for fCal, fMergeCal: " << fCal.runtime << "\t" << fMergeCal.runtime << endl;
+      for (int ifee=0; ifee<72; ifee++)
+      {
+        fCal.pedm[ifee]         =fMergeCal.pedm[ifee]      ;
+        fCal.rms[ifee]          =fMergeCal.rms[ifee]       ;
+        fCal.mpv[ifee]          =fMergeCal.mpv[ifee]       ;
+        fCal.empv[ifee]         =fMergeCal.empv[ifee]      ;
+        for (int ip=0; ip<7; ip++)
+        {
+          fCal.pup[ifee][ip]       =fMergeCal.pup[ifee][ip]    ;
+          fCal.epup[ifee][ip]      =fMergeCal.epup[ifee][ip]   ;
+          fCal.pdn[ifee][ip]       =fMergeCal.pdn[ifee][ip]    ;
+          fCal.epdn[ifee][ip]      =fMergeCal.epdn[ifee][ip]   ;
+        }        
+      }
+    }
+    
+    for (int HLXID=0; HLXID<=39; HLXID++)
+    {
+      fCal.peakuu[HLXID]       =fMergeCal.peakuu[HLXID]    ;
+      fCal.widthuu[HLXID]      =fMergeCal.widthuu[HLXID]   ;
+      fCal.peakud[HLXID]       =fMergeCal.peakud[HLXID]    ;
+      fCal.widthud[HLXID]      =fMergeCal.widthud[HLXID]   ;
+      fCal.peakdu[HLXID]       =fMergeCal.peakdu[HLXID]    ;
+      fCal.widthdu[HLXID]      =fMergeCal.widthdu[HLXID]   ;
+      fCal.peakdd[HLXID]       =fMergeCal.peakdd[HLXID]    ;
+      fCal.widthdd[HLXID]      =fMergeCal.widthdd[HLXID]   ;
+    }
+    
 
     //add or modify branches:
-    fillFitSlopeIntercepts(runnum);
-    
+//    fillFitSlopeIntercepts(runnum);  
 
     //fill modified tofcal ttree 
     fOUTTOFcal->Fill();

@@ -1,8 +1,20 @@
-//void AnalTOFSkel(TString infile) //infile is tof output created by skeletor
-//infile: skeletor.15550.root
+//void AnalTOFSkelTree(TTree *toft, const TString &outfile, bool recalcChargeDivPos = true, bool recalcTimeDiffPos = true )  //infile is toft tree output created by skeletor
+//input: toft or chain of skeletor toft trees
+//outfile: name of output file 
 
-//NOW SET TO WORK WITH skeletor.v12.1.NT (new tracking) as input. 
-// BUG FIXES APPLIED.
+//Driver (at end of this file):
+//void AnalTOFSkelList(const char *listName = "filelist.txt", const char *outName  = "combined.AnalTOFSkel.root")
+//  std::string dir = "/data/skeletor/";
+//  std::string fnameStem = "skeletor.";
+//  std::string fnameExt = ".root";
+
+
+// to run with list of runs:
+//void AnalTOFSkelList(const char *listName = "filelist.txt",
+//                    const char *outName  = "combined.AnalTOFSkel.root")
+
+//NOW SET TO WORK WITH skeletor.v12.2.NT (new tracking) as input. 
+// BUG FIXES TO fSignalSum APPLIED.
 
 //
 // SC 10/12/2026   repackage AnalTOFSkel.C into AnalTOFSkelTree.C which will be invoked within AnalTOFSkelChain.C to
@@ -11,10 +23,10 @@
 ////////////////////////////////////////////////
 
 //include PSU tof calib tools:
-#include "PSUTofTools12.C"
-/////  SET THIS IN PSUTofTools12.C!! ////
+#include "PSUTofTools13.C"
+/////  SET THIS IN PSUTofTools13.C!! ////
 //Set up input tofcal ttree:
-//string kInputTofcalName = "tofcal12.1.root";
+//string kInputTofcalName = "tofcal13.1.root";
 
 //include PSU thickness tools for paddle thicknesses
 #include "PSUThicknessTools.C"
@@ -67,18 +79,15 @@ void AnalTOFSkelTree(TTree *toft, const TString &outfile, bool recalcChargeDivPo
   
 ///////////////////////////////////////////////
   // Load INPUT tofcal calibration data
-  loadSCTOFCalibsv12();
+  loadSCTOFCalibsv13();
   
   //set up OUTPUT tofcal calibration  
 //  createSCTOFCalibs();
   
   //load response correction parameters:
-  //for sqrt(signal) based corrections
-//  string kInputResponseCorrFileName = "combined.Bon.sqrt.PadSigTGraphFits.txt";
-//  if (outfile.Contains("Boff")) kInputResponseCorrFileName = "combined.Boff.sqrt.PadSigTGraphFits.txt";
-  //for sqrt(signal) based corrections
-  string kInputResponseCorrFileName = "combined.Bon.PadSigTGraphFits.txt";
-  if (outfile.Contains("Boff")) kInputResponseCorrFileName = "combined.Boff.PadSigTGraphFits.txt";
+  //from padsigG corrections in Bon.AnalTOFv4.v12.2.NT.2.root
+  string kInputResponseCorrFileName = "Bon.AnalTOFv4.v12.2.NT.2.SignalGHiR.PadSigTGraphFits.txt";
+  if (outfile.Contains("Boff")) kInputResponseCorrFileName = "Boff.AnalTOFv4.v12.2.NT.2.SignalGHiR.PadSigTGraphFits.txt";
   readResponseCorr(kInputResponseCorrFileName);
   
   ///////////////////////////////////////////
@@ -94,55 +103,64 @@ void AnalTOFSkelTree(TTree *toft, const TString &outfile, bool recalcChargeDivPo
   //////////////////////////////////////////
   //BOOK SOME HISTOGRAMS
   //////////////////////////////////////////
-  //These 3D histograms don't seem to work as TProfiles, which I prefer to fit over fitting the 2D histo.
-//  TH3D* hZdct = new TH3D("hZdct","padID vs DCTY vs fChargeDivFrac;paddle;fChargeDivFrac;dctY (mm)",17,0,17, 50,-1,1, 200,-1000,1000);
-//  TH3D* hTdct = new TH3D("hTdct","padID vs DCTY vs fTimeDiff;paddle;fTimeDiff;dctY (mm)",17,0,17, 50,-12,12, 200,-1000,1000);
 
   //pos from timing, chargeDivFrac, and difference
   TH2D** hChargeDivPos;                 //position from charge division 
-  hChargeDivPos     = new TH2D*[17];
+  hChargeDivPos       = new TH2D*[17];
   TH2D** hSignal;                       // Charge (getSignal() = geometric mean of end fees and geometric mean of ends) vs DCTY for all paddles
-  hSignal           = new TH2D*[17];
+  hSignal             = new TH2D*[17];
   TH2D** hSignalA;                       // Charge (arithmetic mean of end fees and arith mean of ends) vs DCTY for all paddles
-  hSignalA           = new TH2D*[17];
+  hSignalA            = new TH2D*[17];
   TH2D** hSignalG;                       // Charge (arithmetic mean of end fees and geometric mean of ends) vs DCTY for all paddles
-  hSignalG           = new TH2D*[17];
+  hSignalG            = new TH2D*[17];
+  TH2D** hSignalHiR;                       // Charge (getSignal() = geometric mean of end fees and geometric mean of ends) vs DCTY for all paddles
+  hSignalHiR          = new TH2D*[17];
+  TH2D** hSignalAHiR;                       // Charge (arithmetic mean of end fees and arith mean of ends) vs DCTY for all paddles
+  hSignalAHiR         = new TH2D*[17];
+  TH2D** hSignalGHiR;                       // Charge (arithmetic mean of end fees and geometric mean of ends) vs DCTY for all paddles
+  hSignalGHiR         = new TH2D*[17];
   TH2D** hChg;                       // Charge (sqrt(hSignal)) vs DCTY for all paddles
-  hChg           = new TH2D*[17];
+  hChg                = new TH2D*[17];
   TH2D** hChgA;                       // Charge (sqrt(hSignalA)) vs DCTY for all paddles
-  hChgA           = new TH2D*[17];
+  hChgA               = new TH2D*[17];
   TH2D** hChgG;                       // Charge (sqrt(hSignalG)) vs DCTY for all paddles
-  hChgG           = new TH2D*[17];
+  hChgG               = new TH2D*[17];
+  TH2D** hChgHiR;                       // Charge (sqrt(hSignal)) vs DCTY for all paddles
+  hChgHiR             = new TH2D*[17];
+  TH2D** hChgAHiR;                       // Charge (sqrt(hSignalA)) vs DCTY for all paddles
+  hChgAHiR            = new TH2D*[17];
+  TH2D** hChgGHiR;                       // Charge (sqrt(hSignalG)) vs DCTY for all paddles
+  hChgGHiR            = new TH2D*[17];
   TH2D** hTimeDiffPos;                  //position from end to end time difference 
-  hTimeDiffPos      = new TH2D*[17];
+  hTimeDiffPos        = new TH2D*[17];
   TH2D** hPosDiff;                      //comparison of position from charge division and time diff
-  hPosDiff          = new TH2D*[17];
+  hPosDiff            = new TH2D*[17];
   TH2D** hXY;                           // SC  check (X,Y) for each paddle
-  hXY               = new TH2D*[17];
+  hXY                 = new TH2D*[17];
   TH2D** hXYshift;                      // SC  check (X,Y) for each paddle; (X,Y) shifted to a paddle position (0-20 cm, 0-180 cm)
-  hXYshift          = new TH2D*[17];
+  hXYshift            = new TH2D*[17];
   TH2D** hYXshift;                      // SC  check (Y,X) for each paddle; (Y,X) shifted to a paddle position (0-20 cm, 0-180 cm);  YX is interesting to look at instead of XY to look for possible paddle rotations
-  hYXshift          = new TH2D*[17];
+  hYXshift            = new TH2D*[17];
   TProfile** pYXshift;
-  pYXshift = new TProfile*[17];
+  pYXshift            = new TProfile*[17];
   TH2D** hXYChi;                        // SC  check (X,Y) for each paddle, after a DCTChi2 cut
-  hXYChi            = new TH2D*[17];
+  hXYChi              = new TH2D*[17];
   TH2D** hXYHitC;                       // SC  check (X,Y) for each paddle, after a DCT hitCount cut
-  hXYHitC           = new TH2D*[17];
+  hXYHitC             = new TH2D*[17];
   TH1D** hthck;                         // SC  thckness at (X,Y) for each paddle
-  hthck             = new TH1D*[17];
+  hthck               = new TH1D*[17];
   TH2D** hZdT;                          //fChargeDivPos vs fTimeDiffPos timing differences
-  hZdT = new TH2D*[17];
+  hZdT                = new TH2D*[17];
   TProfile** pZdT;
-  pZdT = new TProfile*[17];
+  pZdT                = new TProfile*[17];
   TH2D** hZdct;                         //position differences: dcty vs fChargeDivFrac
-  hZdct = new TH2D*[17];
+  hZdct               = new TH2D*[17];
   TProfile** pZdct;
-  pZdct = new TProfile*[17];
+  pZdct               = new TProfile*[17];
   TH2D** hTdct;                         //position differences: fTimeDiff vs dcty
-  hTdct = new TH2D*[17];
+  hTdct               = new TH2D*[17];
   TProfile** pTdct;
-  pTdct = new TProfile*[17];
+  pTdct               = new TProfile*[17];
   
 
   for (int i=0;i<17;i++)
@@ -172,6 +190,21 @@ void AnalTOFSkelTree(TTree *toft, const TString &outfile, bool recalcChargeDivPo
     if (i<16) hSignalG[i]      = new TH2D(hname1.Data(),htitle1.Data(),50,-800,800, 800,0,20);
     else      hSignalG[i]      = new TH2D(hname1.Data(),htitle1.Data(),50,-300,300, 800,0,20);
     
+    hname1   = TString::Format("%s%d","hSignalHiR",i);
+    htitle1  = TString::Format("%s%d%s","fSignal vs DCTY for R>2, paddle",i,";DCTY (mm);Signal (MIPs)");
+    if (i<16) hSignalHiR[i]      = new TH2D(hname1.Data(),htitle1.Data(),50,-800,800, 800,0,20);
+    else      hSignalHiR[i]      = new TH2D(hname1.Data(),htitle1.Data(),50,-300,300, 800,0,20);
+    
+    hname1   = TString::Format("%s%d","hSignalAHiR",i);
+    htitle1  = TString::Format("%s%d%s","Arithmetic mean vs DCTY for R>2, paddle",i,";DCTY (mm);Signal (MIPs)");
+    if (i<16) hSignalAHiR[i]      = new TH2D(hname1.Data(),htitle1.Data(),50,-800,800, 800,0,20);
+    else      hSignalAHiR[i]      = new TH2D(hname1.Data(),htitle1.Data(),50,-300,300, 800,0,20);
+    
+    hname1   = TString::Format("%s%d","hSignalGHiR",i);
+    htitle1  = TString::Format("%s%d%s","Geometric mean vs DCTY for R>2, paddle",i,";DCTY (mm);Signal (MIPs)");
+    if (i<16) hSignalGHiR[i]      = new TH2D(hname1.Data(),htitle1.Data(),50,-800,800, 800,0,20);
+    else      hSignalGHiR[i]      = new TH2D(hname1.Data(),htitle1.Data(),50,-300,300, 800,0,20);
+    
     hname1   = TString::Format("%s%d","hChg",i);
     htitle1  = TString::Format("%s%d%s","Chg vs DCTY, paddle",i,";DCTY (mm);Chg (Z))");
     if (i<16) hChg[i]      = new TH2D(hname1.Data(),htitle1.Data(),50,-800,800, 800,0,20);
@@ -186,6 +219,21 @@ void AnalTOFSkelTree(TTree *toft, const TString &outfile, bool recalcChargeDivPo
     htitle1  = TString::Format("%s%d%s","ChgG vs DCTY, paddle",i,";DCTY (mm);Chg (Z))");
     if (i<16) hChgG[i]      = new TH2D(hname1.Data(),htitle1.Data(),50,-800,800, 800,0,20);
     else      hChgG[i]      = new TH2D(hname1.Data(),htitle1.Data(),50,-300,300, 800,0,20);
+    
+    hname1   = TString::Format("%s%d","hChgHiR",i);
+    htitle1  = TString::Format("%s%d%s","Chg vs DCTY for R>2, paddle",i,";DCTY (mm);Chg (Z))");
+    if (i<16) hChgHiR[i]      = new TH2D(hname1.Data(),htitle1.Data(),50,-800,800, 800,0,20);
+    else      hChgHiR[i]      = new TH2D(hname1.Data(),htitle1.Data(),50,-300,300, 800,0,20);
+    
+    hname1   = TString::Format("%s%d","hChgAHiR",i);
+    htitle1  = TString::Format("%s%d%s","ChgA vs DCTY for R>2, paddle",i,";DCTY (mm);Chg (Z))");
+    if (i<16) hChgAHiR[i]      = new TH2D(hname1.Data(),htitle1.Data(),50,-800,800, 800,0,20);
+    else      hChgAHiR[i]      = new TH2D(hname1.Data(),htitle1.Data(),50,-300,300, 800,0,20);
+    
+    hname1   = TString::Format("%s%d","hChgGHiR",i);
+    htitle1  = TString::Format("%s%d%s","ChgG vs DCTY for R>2, paddle",i,";DCTY (mm);Chg (Z))");
+    if (i<16) hChgGHiR[i]      = new TH2D(hname1.Data(),htitle1.Data(),50,-800,800, 800,0,20);
+    else      hChgGHiR[i]      = new TH2D(hname1.Data(),htitle1.Data(),50,-300,300, 800,0,20);
     
     TString hname2  = TString::Format("%s%d","hPosDiff",i);
     TString htitle2 = TString::Format("%s%d%s","Position diff (fTimeDiffPos-fChargeDivPos) vs DCTY, paddle",i,";DCTY (mm);Pos diff (mm)");
@@ -273,6 +321,12 @@ void AnalTOFSkelTree(TTree *toft, const TString &outfile, bool recalcChargeDivPo
   heSigA      = new TH2D*[17*2];  
   TH2D** heSigG;             //ln(end signal) vs dcty, geometric mean
   heSigG      = new TH2D*[17*2];  
+  TH2D** heSigHiR;             //ln(end signal) vs dcty, SPW getSignal()
+  heSigHiR      = new TH2D*[17*2];  
+  TH2D** heSigAHiR;             //ln(end signal) vs dcty, arithmetic mean
+  heSigAHiR      = new TH2D*[17*2];  
+  TH2D** heSigGHiR;             //ln(end signal) vs dcty, geometric mean
+  heSigGHiR      = new TH2D*[17*2];  
 
 //  TProfile** peSig;             //ln(end signal) vs dcty, SPW getSignal()
 //  peSig      = new TProfile*[17*2];  
@@ -313,6 +367,18 @@ void AnalTOFSkelTree(TTree *toft, const TString &outfile, bool recalcChargeDivPo
 //    hname1   = TString::Format("%s%d%s%d","peSigG",i,"_",j);
 //    peSigG[i*2+j] = new TProfile(hname1.Data(),htitle1.Data(), 50,-800,800, -2.,8.);
 //    peSigG[i*2+j]->BuildOptions(-1.5,1.,"");
+
+      hname1   = TString::Format("%s%d%s%d","heSigHiR",i,"_",j);
+      htitle1  = TString::Format("%s%d%s%d%s","loge(signal) vs (DCTY-padCenter) for R>2, paddle ", i, " end ",j ,";(DCTY-padCenter) (mm);loge(signal) (ln(MIPs))");
+      heSigHiR[i*2+j] = new TH2D(hname1.Data(),htitle1.Data(), 50,-800,800, 100,-2.,8.);
+
+      hname1   = TString::Format("%s%d%s%d","heSigAHiR",i,"_",j);
+      htitle1  = TString::Format("%s%d%s%d%s","loge(signalA) vs (DCTY-padCenter) for R>2,  paddle ", i, " end ",j, ";(DCTY-padCenter) (mm);loge(signalA) (ln(MIPs))");
+      heSigAHiR[i*2+j] = new TH2D(hname1.Data(),htitle1.Data(),50,-800,800, 100,-2.,8.);
+
+      hname1   = TString::Format("%s%d%s%d","heSigGHiR",i,"_",j);
+      htitle1  = TString::Format("%s%d%s%d%s","loge(signalG) vs (DCTY-padCenter) for R>2,  paddle ", i, " end ",j ,";(DCTY-padCenter) (mm);loge(signalG) (ln(MIPs))");
+      heSigGHiR[i*2+j] = new TH2D(hname1.Data(),htitle1.Data(),50,-800,800, 100,-2.,8.);
 
     }
   }
@@ -408,7 +474,8 @@ void AnalTOFSkelTree(TTree *toft, const TString &outfile, bool recalcChargeDivPo
   //time of flight:  
   auto hTOFdT   = new TH1D("hTOFdT" , "dTOF;ns" , 1000, -20, 20);
   
-  //beta:
+  //beta and rig:
+  auto hR   = new TH1D("hR" , "Rigidity;(GV)" , 1200, -30, 30);
   auto hbeta   = new TH1D("hbeta" , "beta;(c)" , 1000, -2, 2);
   auto hinvbeta   = new TH1D("hinvbeta" , "1/beta;(1/c)" , 1000, -4, 4);
   TH2D* hZvbeta        = new TH2D("hZvbeta", "Signal: Zave vs beta (c);beta (c);Zave (MIP)",400,0.3,1.3,480,0,12);
@@ -423,7 +490,7 @@ void AnalTOFSkelTree(TTree *toft, const TString &outfile, bool recalcChargeDivPo
   auto nevts = toft->GetEntries();
   cout << "Number of events: " << nevts << endl;
   
-  //////TEST////
+  ////// TEST LIMITED SET OF ENTRIES: ////
 //  nevts = 20;
   /////////////
   for (int ik=0; ik< nevts; ik++)
@@ -467,8 +534,11 @@ void AnalTOFSkelTree(TTree *toft, const TString &outfile, bool recalcChargeDivPo
           auto [laneIdx, chanIdx] = theGeom->fTOF.fGeoMap[{paddleID, endID, feeID}];
           int SCfeeID = laneIdx*8 + chanIdx; //HLX labels. tofcal12
           double feeSignal = feeHit.fSignalSumRaw;
-          double chanGain = fCal.mpv[SCfeeID]/fCal.mpv[8];  //normalize to FEE8 (paddle 0, FEE0)
-          feeHit.fSignalSum = feeSignal/chanGain/fCal.mippk;
+          double chanGain = fCal.mpv[SCfeeID]/fCal.mpv[1];  //normalize to FEE1 (lane 0, ch 1: pad_id=16, end_id=1, fee_id=3) as of tofcal12.2.root
+//          double chanGain = fCal.mpv[SCfeeID]/fCal.mpv[8];  //normalize to FEE8 (paddle 0, FEE0)
+          double mymippk = 204.6; //constant -- close to the old SC value
+          feeHit.fSignalSum = feeSignal/chanGain/mymippk;
+//          feeHit.fSignalSum = feeSignal/chanGain/fCal.mippk;
 //          feeHit.fSignalSum /= fCal.mippk;  //scale by global mippk to Z=1
 //          cout << "FIX: " << feeSignal << "\t" << chanGain << "\t" << fCal.mippk << "\t" << feeHit.fSignalSum << endl;
         }
@@ -556,9 +626,15 @@ void AnalTOFSkelTree(TTree *toft, const TString &outfile, bool recalcChargeDivPo
         int endID     =  endHit[i*2+j].fTag.getPaddleEndID();
         int globalEndID = padID[i]*2+endID;
         int k = i*2+j;
-        if (eSig [k]>0) {heSig [globalEndID]->Fill(tofY[i]-padCenter[i], log(eSig [k])); peSig [globalEndID]->Fill(tofY[i]-padCenter[i], log(eSig [k]));}
-        if (eSigA[k]>0) {heSigA[globalEndID]->Fill(tofY[i]-padCenter[i], log(eSigA[k])); peSigA[globalEndID]->Fill(tofY[i]-padCenter[i], log(eSigA[k]));}
-        if (eSigG[k]>0) {heSigG[globalEndID]->Fill(tofY[i]-padCenter[i], log(eSigG[k])); peSigG[globalEndID]->Fill(tofY[i]-padCenter[i], log(eSigG[k]));}
+        if (eSig [k]>0) {heSig [globalEndID]->Fill(tofY[i]-padCenter[i], log(eSig [k])); /*peSig [globalEndID]->Fill(tofY[i]-padCenter[i], log(eSig [k]));*/}
+        if (eSigA[k]>0) {heSigA[globalEndID]->Fill(tofY[i]-padCenter[i], log(eSigA[k])); /*peSigA[globalEndID]->Fill(tofY[i]-padCenter[i], log(eSigA[k]));*/}
+        if (eSigG[k]>0) {heSigG[globalEndID]->Fill(tofY[i]-padCenter[i], log(eSigG[k])); /*peSigG[globalEndID]->Fill(tofY[i]-padCenter[i], log(eSigG[k]));*/}
+        if (rig > 2 || runnum >= 15550 ) //HiR or Boff
+        {
+          if (eSig [k]>0) {heSigHiR [globalEndID]->Fill(tofY[i]-padCenter[i], log(eSig [k]));}
+          if (eSigA[k]>0) {heSigAHiR[globalEndID]->Fill(tofY[i]-padCenter[i], log(eSigA[k]));}
+          if (eSigG[k]>0) {heSigGHiR[globalEndID]->Fill(tofY[i]-padCenter[i], log(eSigG[k]));}
+        }
       }
     }
 
@@ -638,7 +714,7 @@ void AnalTOFSkelTree(TTree *toft, const TString &outfile, bool recalcChargeDivPo
         } 
         if (i==1) //bore
         {
-          padt2D = &fCal.boret[0][0][0]; //bore
+          padt2D = &fCal.boret[0][0]; //bore
           thck[i] = thickness(i, padt2D, (tofX[i]-padx[i])/10. , (tofY[i]-pady[i])/10. );  // positions in cm, not mm (/10.); the BP does NOT need the 1/2 paddle shift
         }
       	hthck[padID[i]] -> Fill(thck[i]);        
@@ -727,9 +803,9 @@ void AnalTOFSkelTree(TTree *toft, const TString &outfile, bool recalcChargeDivPo
 //  //  cout << ik << "SC: " <<padSigSC[0] << "\t" <<padSigSC[1] << "\t" <<padSigSC[2] << endl;
 //    cout << endl;
 
-//      padSig [j] /= responseCorr(padID[j],tofY[j]-padCenter[j]);   //correct for response along paddle length
-//      padSigA[j] /= responseCorr(padID[j],tofY[j]-padCenter[j]);   //correct for response along paddle length
-//      padSigG[j] /= responseCorr(padID[j],tofY[j]-padCenter[j]);   //correct for response along paddle length
+      padSig [j] /= applyResponseCorr(padID[j],tofY[j]-padCenter[j]);   //correct for response along paddle length
+      padSigA[j] /= applyResponseCorr(padID[j],tofY[j]-padCenter[j]);   //correct for response along paddle length
+      padSigG[j] /= applyResponseCorr(padID[j],tofY[j]-padCenter[j]);   //correct for response along paddle length
       chg [j]     = (padSig [j]>0)? sqrt(padSig [j]) : 0;
       chgA[j]     = (padSigA[j]>0)? sqrt(padSigA[j]) : 0;
       chgG[j]     = (padSigG[j]>0)? sqrt(padSigG[j]) : 0;
@@ -744,6 +820,15 @@ void AnalTOFSkelTree(TTree *toft, const TString &outfile, bool recalcChargeDivPo
       hChg          [padID[j]]->Fill(tofY[j]-padCenter[j],        chg[j]);
       hChgA         [padID[j]]->Fill(tofY[j]-padCenter[j],        chgA[j]);
       hChgG         [padID[j]]->Fill(tofY[j]-padCenter[j],        chgG[j]);
+      if (rig > 2 || runnum >= 15550)
+      {
+        hSignalHiR       [padID[j]]->Fill(tofY[j]-padCenter[j],        padSig[j]);
+        hSignalAHiR      [padID[j]]->Fill(tofY[j]-padCenter[j],        padSigA[j]);
+        hSignalGHiR      [padID[j]]->Fill(tofY[j]-padCenter[j],        padSigG[j]);
+        hChgHiR          [padID[j]]->Fill(tofY[j]-padCenter[j],        chg[j]);
+        hChgAHiR         [padID[j]]->Fill(tofY[j]-padCenter[j],        chgA[j]);
+        hChgGHiR         [padID[j]]->Fill(tofY[j]-padCenter[j],        chgG[j]);
+      }
       hPosDiff      [padID[j]]->Fill(tofY[j]-padCenter[j],        timeDiffPos - chargeDivPos);
       hZdT          [padID[j]]->Fill(timeDiffPos,                 chargeDivPos);
       pZdT          [padID[j]]->Fill(timeDiffPos,                 chargeDivPos);
@@ -919,9 +1004,9 @@ void AnalTOFSkelTree(TTree *toft, const TString &outfile, bool recalcChargeDivPo
     //NB: THESE SHOULD BE DIFFERENT PARAMETERS FOR EACH METHOD! RIGHT NOW: SPW method parameters
     for (int i=0; i<3; i++)  
     {
-      padSig [i] /= responseCorr(padID[i],tofY[i]-padCenter[i]);   //correct for response along paddle length based on hSignal vs DCTY
-      padSigA[i] /= responseCorr(padID[i],tofY[i]-padCenter[i]);   //correct for response along paddle length
-      padSigG[i] /= responseCorr(padID[i],tofY[i]-padCenter[i]);   //correct for response along paddle length
+      padSig [i] /= applyResponseCorr(padID[i],tofY[i]-padCenter[i]);   //correct for response along paddle length based on hSignal vs DCTY
+      padSigA[i] /= applyResponseCorr(padID[i],tofY[i]-padCenter[i]);   //correct for response along paddle length
+      padSigG[i] /= applyResponseCorr(padID[i],tofY[i]-padCenter[i]);   //correct for response along paddle length
     }
     
     zall = (padSig [0] + padSig [1] + padSig[2])/3.;
@@ -984,18 +1069,20 @@ void AnalTOFSkelTree(TTree *toft, const TString &outfile, bool recalcChargeDivPo
       if (!isInPaddle(tofX[i], padx[i], tolx[i]) || !isInPaddle(tofY[i], pady[i], toly[i])) {inPaddle = false;}
     }
   
+    double myrig = (std::isfinite(rig))? rig : 0;
     //    if (abs(topSig/tvars.topPLC*tcorr[0]-botSig/tvars.botPLC*tcorr[2])<0.2 ) { // apply top/bottom tight charge agreement
     if (abs(chg[0]-chg[2])<0.2 ) { // apply top/bottom tight charge agreement
       if (DCTChi2<2.&&hitCount>60.&&inPaddle)   // DCT cuts, including whether track hits the right paddles
       {
 //	      if (beta>0.2&&beta<1.01) {hmass->Fill(allZSC2*rig*sqrt(pow(1./beta,2.)-1.));}   // mass*c^2 in GV units 
-	      if (beta>0.2&&beta<1.01) {hmass->Fill(zall*rig*sqrt(pow(1./beta,2.)-1.));}   // mass*c^2 in GV units 
+	      if (beta>0.2&&beta<1.01) {hmass->Fill(zall*myrig*sqrt(pow(1./beta,2.)-1.));}   // mass*c^2 in GV units 
       }
     }
     
 //    hZvR->Fill(rig, allZSC2); //rigidity on x; Zave on y
 //    hZvbeta->Fill(beta,allZSC2);
-    hZvR->Fill(rig, zall); //rigidity on x; Zave on y
+    hR->Fill(myrig); //rigidity
+    hZvR->Fill(myrig, zall); //rigidity on x; Zave on y
     hZvbeta->Fill(beta,zall);
     //    hBvT->Fill(pow(padSig[0],expo2), pow(padSig[2],expo2)); //top signal on x; bottom signal on y
     hBvT->Fill(chgG[0],chgG[2]); //top signal on x; bottom signal on y
@@ -1008,3 +1095,59 @@ void AnalTOFSkelTree(TTree *toft, const TString &outfile, bool recalcChargeDivPo
 
 
 }
+
+//
+// SC 10/12/2026   A process to run multiple skeletor files chained together using a variant of AnalTOFSkel.C
+// renamed AnalTOFSkelTree.C .
+//
+// ROOT usage:
+//   .L AnalTOFSkelTree.C
+//   .L AnalTOFSkelChain.C
+//   AnalTOFSkelList("filelist.txt", "all.AnalTOFSkel.root");
+//
+// where filelist.txt is the list of run numbers, such as 2024_Kiruna_Float_Boff.txt, to chain and process, and all.AnalTOFSkel.root will be
+// the output file.
+
+//make the chain global so you can access it from the command line:
+TChain chain("toft");
+
+void AnalTOFSkelList(const char *listName = "filelist.txt",
+                    const char *outName  = "combined.AnalTOFSkel.root")
+{
+  std::string dir = "/data/skeletor/";
+  std::string fnameStem = "skeletor.";
+  std::string fnameExt = ".root";
+  
+  std::ifstream list(listName);
+  if (!list) {
+    std::cerr << "Cannot open file list: " << listName << "\n";
+    return;
+  }
+
+//  TChain chain("toft");
+  std::string line;
+  int nFiles = 0;
+
+  while (std::getline(list, line)) {
+    if (line.empty() || line[0] == '#') continue;
+    std::string fname = dir+fnameStem+line.c_str()+fnameExt;
+//    if (chain.Add(line.c_str()) <= 0) {
+//      std::cerr << "Could not add: " << line << "\n";
+    if (chain.Add(fname.c_str()) <= 0) {
+      std::cerr << "Could not add: " << fname << "\n";
+      continue;
+    }
+    ++nFiles;
+  }
+
+  if (nFiles == 0 || chain.GetEntries() == 0) {
+    std::cerr << "No usable files or entries found\n";
+    return;
+  }
+
+  std::cout << "Added " << nFiles << " files; entries = "
+            << chain.GetEntries() << "\n";
+
+  AnalTOFSkelTree(&chain, outName);
+}
+

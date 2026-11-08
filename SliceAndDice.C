@@ -3,10 +3,10 @@
 
 // To use:
 // Single paddle: 
-// TGraphErrors* SliceAndDice(TH2 *h2, int method = 1, double xMin=-800, double xMax=800, int bincomb=1)
+// TGraphErrors* SliceAndDice(TH2 *h2, int method = 2, int bincomb=1, double xMin=-800, double xMax=800)
 
 // All paddles: 
-// void DoSignalAnal(int method = 2, int bincomb = 2)
+// void DoSignalAnal(TString histoName = "hSignal", int method = 2, int bincomb = 2)
 
 // Methods: 
 //  0: use bin with max contents
@@ -70,7 +70,7 @@ std::vector<int> extractPadID(string text) {
 void DrawSlices(TH1D **hsli, int nsli)
 {
   //check whether this is hSignal or heSig
-  double xmin = -1.0, xmax = 1.5; //heSig  
+  double xmin = -1.0, xmax = 2.5; //heSig  
   TString hname = hsli[0]->GetName();
   if (hname.Contains("hSignal"))  {    xmin = 0; xmax = 4;      }
   
@@ -115,7 +115,7 @@ void DrawEverything(TH1D **hsli, int nsli, TGraphErrors* g1, TH2 *h2)
 }
 
 //Make slices:
-TGraphErrors* SliceAndDice(TH2 *h2, int method = 1, double xMin=-800, double xMax=800, int bincomb=1)
+TGraphErrors* SliceAndDice(TH2 *h2, int method = 2, int bincomb=1, double xMin=-800, double xMax=800)
 {
   //make slices along x from 2D plot
   // in a reduced number of x bins by the factor bincomb, eg bincomb = 1, 2, 3, 5
@@ -141,8 +141,8 @@ TGraphErrors* SliceAndDice(TH2 *h2, int method = 1, double xMin=-800, double xMa
   TString hname = h2->GetName();
   
   //check whether this is hSignal or heSig
-  double xmin = -1.0, xmax = 1.5; //heSig  
-  if (hname.Contains("hSignal"))  {    xmin = 0.1; xmax = 1.5;    }
+  double xmin = -1.0, xmax = 2.5; //heSig  
+  if (hname.Contains("hSignal"))  {    xmin = 0.1; xmax = 2.0;    }
   
   
 
@@ -171,8 +171,8 @@ TGraphErrors* SliceAndDice(TH2 *h2, int method = 1, double xMin=-800, double xMa
     double ampl = hsli[i]->GetBinContent(hsli[i]->GetMaximumBin());
     fg->SetParameters(ampl, maxval[knt],0.1);
     flan->SetParameters(ampl, maxval[knt],0.1);
-    if (method <= 1) hsli[i]->Fit(fg,"QO","",maxval[knt]-0.3,maxval[knt]+0.2);
-    if (method == 2) hsli[i]->Fit(flan,"QO","",maxval[knt]-0.3,maxval[knt]+0.3);
+    if (method <= 1) hsli[i]->Fit(fg,"QO","",maxval[knt]-0.4,maxval[knt]+0.3);
+    if (method == 2) hsli[i]->Fit(flan,"QO","",maxval[knt]-0.5,maxval[knt]+0.6);
     TF1* fit = hsli[i]->GetFunction("fg");
     if (method == 2) fit = hsli[i]->GetFunction("flan");
     pk[knt] = (fit)? fit->GetParameter(1) : 0;
@@ -251,8 +251,11 @@ void MakeProjectionXPlots(TH2D** hSignal)
 
 }
 
-void DoSignalAnal(int method = 2, int bincomb = 2)
+void DoSignalAnal(TString histoName = "hSignal", int method = 2, int bincomb = 2)
 {
+  //histoName options: AnalTOFSkelv4:
+  // hSignal, hSignalA, hSignalG
+  // hSignalHiR, hSignalAHiR, hSignalGHiR
   
 //  int colors[17];
 //  for (int i=0; i<17; i++) colors[i] = 1+2*i;
@@ -270,11 +273,13 @@ void DoSignalAnal(int method = 2, int bincomb = 2)
   //get histograms:
   for (int i=0; i<17; i++)
   {
-    TString hname = TString::Format("%s%d","hSignalG",i);
+    TString hname = TString::Format("%s%d",histoName.Data(),i);
+//    TString hname = TString::Format("%s%d","hSignalGHiR",i);
+//    TString hname = TString::Format("%s%d","hSignalG",i);
     hSignalG[i] = (TH2D*)_file0->Get(hname.Data());
     double xmin = -800, xmax = 800; //mm
     if (i==16) { xmin = -300; xmax = 300;} //bore paddle
-    grSig[i]   = SliceAndDice(hSignalG[i],method,xmin,xmax,bincomb);
+    grSig[i]   = SliceAndDice(hSignalG[i],method,bincomb,xmin,xmax);
     string grname = string(hname.Data())+"_gr";
     grSig[i]->SetName(grname.c_str());
   }
@@ -288,6 +293,7 @@ void DoSignalAnal(int method = 2, int bincomb = 2)
   TCanvas* cgrbot;
 //  TLegend* ltop   = new TLegend();
   //TOP + BOT:
+  double ymin=0.8, ymax = 1.6;
   for (int i=0; i<16; i++)
   {
     if (i==8)
@@ -306,7 +312,7 @@ void DoSignalAnal(int method = 2, int bincomb = 2)
     string opt = "lpsame";
     if (i==0 || i==8) opt = "alp";
 //    cgrtop->cd(i+1);
-    if (i==0 || i==8) grSig[i]->GetYaxis()->SetRangeUser(0.6,1.2);
+    if (i==0 || i==8) grSig[i]->GetYaxis()->SetRangeUser(ymin,ymax);
     grSig[i]->Draw(opt.c_str());
   }
   cgrbot->BuildLegend();
@@ -341,7 +347,7 @@ void DoSignalAnal(int method = 2, int bincomb = 2)
   double* pars = fit->GetParameters();
   cout << "Graph for paddle 16 fit params: " << pars[0] << "\t" << pars[1] << "\t" << pars[2] << endl;
   txtout << "16\t" << pars[0] << "\t" << pars[1] << "\t" << pars[2] << endl;
-  grSig[16]->GetYaxis()->SetRangeUser(0.6,1.2);
+  grSig[16]->GetYaxis()->SetRangeUser(ymin,ymax);
   grSig[16]->Draw("alp");
   
   txtout.close();
@@ -476,21 +482,24 @@ void DoEndSignalAnal(int method = 2, int bincomb = 2)
   {
     for (int j=0; j<2; j++) //ends
     {
-      TString hname   = TString::Format("%s%d%s%d","heSig",i,"_",j);
+      TString hname   = TString::Format("%s%d%s%d","heSigHiR",i,"_",j);
+//      TString hname   = TString::Format("%s%d%s%d","heSig",i,"_",j);
       heSig[i*2+j] = (TH2D*)gFile->Get(hname.Data());
-      hname   = TString::Format("%s%d%s%d","heSigA",i,"_",j);
+      hname   = TString::Format("%s%d%s%d","heSigAHiR",i,"_",j);
+//      hname   = TString::Format("%s%d%s%d","heSigA",i,"_",j);
       heSigA[i*2+j] = (TH2D*)gFile->Get(hname.Data());
-      hname   = TString::Format("%s%d%s%d","heSigG",i,"_",j);
+      hname   = TString::Format("%s%d%s%d","heSigGHiR",i,"_",j);
+//      hname   = TString::Format("%s%d%s%d","heSigG",i,"_",j);
       heSigG[i*2+j] = (TH2D*)gFile->Get(hname.Data());
 
       //create graphs:
       double xmin = -800, xmax = 800; //mm
       if (i==16) { //bore paddle
         xmin = -300; xmax = 300;
-        geSig[i*2+j]   = SliceAndDice(heSigA[i*2+j],method,xmin,xmax,bincomb);
+        geSig[i*2+j]   = SliceAndDice(heSigA[i*2+j],method,bincomb,xmin,xmax);
       } else {
         xmin = -800, xmax = 800; //mm
-        geSig[i*2+j]   = SliceAndDice(heSigG[i*2+j],method,xmin,xmax,bincomb);
+        geSig[i*2+j]   = SliceAndDice(heSigG[i*2+j],method,bincomb,xmin,xmax);
       }
       string grname = string(hname.Data())+"_gr";
       geSig[i*2+j]->SetName(grname.c_str());
@@ -543,7 +552,7 @@ void DoEndSignalAnal(int method = 2, int bincomb = 2)
       string opt = "lpsame";
       if ((i==0 || i==8) && j==0) opt = "alp";
   //    cgetop->cd(i+1);
-      if ((i==0 || i==8) && j==0) geSig[i*2+j]->GetYaxis()->SetRangeUser(-1.,1.0);
+      if ((i==0 || i==8) && j==0) geSig[i*2+j]->GetYaxis()->SetRangeUser(-1.,2.0);
       geSig[i*2+j]->Draw(opt.c_str());
     }
   }
@@ -560,7 +569,7 @@ void DoEndSignalAnal(int method = 2, int bincomb = 2)
     double* pars = fit->GetParameters();
     cout << "Graph for paddle 16 end " << j << " fit params: " << pars[0] << "\t" << pars[1] << "\t" << pars[2] << endl;
     txtout << "16\t" << j << "\t" << pars[0] << "\t" << pars[1] << "\t" << pars[2] << endl;
-    geSig[16*2+j]->GetYaxis()->SetRangeUser(-1.,1.0);
+    geSig[16*2+j]->GetYaxis()->SetRangeUser(-1.,2.0);
     if (j==0) geSig[16*2+j]->Draw("alp");
     else geSig[16*2+j]->Draw("same");
   }
