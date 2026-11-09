@@ -1,8 +1,27 @@
-// do stuff run by run instead of all runs in list at once with Chain
 // 
+// create run by run fee histograms instead of all runs in list at once with Chain as in AnalToFSkelTree
+// NOTE: New skeletor variables Zlo and Zhi included, but I haven't run this new version of skeletor yet 11/9/26
+// Can comment out Zhi and Zlo in root tree. THere is no way to access trigger info from current set of skeletor runs.
+// Run list taken from runs in tofcal tree.
+//
+//
+// Updated to tofcal13 11/9/26 but untested SLN
+
+// Process:
+// Create subdirectory FEESigs in build directory
+// root
+// .L GetFeeSigHists.C
+// GetFeeSigHists()
+// 
+// Follow up to do fits:
+// root
+// .L AnalyzeFEEHists.C
+// RunAnalyzeFEEHists("AllGoodRuns.txt") //does all Bon and Boff runs in tofcal13.
+//
+// Mess with fitting details in here.
 
 //include tools to handle reading and writing tofcal
-#include "PSUTofTools12.C"
+#include "PSUTofTools13.C"
 
 //include PSU thickness tools for paddle thicknesses
 #include "PSUThicknessTools.C"
@@ -24,6 +43,7 @@ void GetFeeSigHists() //one time pass through all entries and writing out to a n
   HLX_Stg2_TOFHit* borTOF = new HLX_Stg2_TOFHit();
   HLX_Stg2_TOFHit* botTOF = new HLX_Stg2_TOFHit(); //top, bore, bottom
   //Hits:
+  Int_t Zhi, Zlo; //trig bits
   struct TOFStruct {
     Double_t ttofX, ttofY, boreX, boreY, btofX, btofY,richX, richY;
     Double_t pathLength, topPLC, borePLC, botPLC;
@@ -38,7 +58,7 @@ void GetFeeSigHists() //one time pass through all entries and writing out to a n
 
   
   // Load INPUT tofcal calibration data
-  loadSCTOFCalibsv12();
+  loadSCTOFCalibsv13();
   
   //set up OUTPUT tofcal calibration  
   //  createSCTOFCalibs();
@@ -75,6 +95,8 @@ void GetFeeSigHists() //one time pass through all entries and writing out to a n
     toft->SetBranchAddress("topTOF", &topTOF);
     toft->SetBranchAddress("boreTOF", &borTOF);
     toft->SetBranchAddress("botTOF", &botTOF);
+    toft->SetBranchAddress("Zhi",&Zhi);
+    toft->SetBranchAddress("Zlo",&Zlo);
     toft->SetBranchAddress("tvars",&tvars);
     toft->SetBranchAddress("runnum",&runnum);
     toft->SetBranchAddress("evttime",&evttime);
@@ -102,6 +124,8 @@ void GetFeeSigHists() //one time pass through all entries and writing out to a n
     //create FEE peak histos for this run
     TH1D** hFeeSig;
     hFeeSig      = new TH1D*[72];  
+    TH1D** hFeeSigHiR;
+    hFeeSigHiR   = new TH1D*[72];  
     TH1D** hFeeSigRaw;
     hFeeSigRaw      = new TH1D*[72];  
 
@@ -110,6 +134,9 @@ void GetFeeSigHists() //one time pass through all entries and writing out to a n
       TString hname   = TString::Format("%s%d","hFeeSig",i);
       TString htitle  = TString::Format("%s%d%s","Corrected FEE SignalSum, fee ",i,";Corrected SignalSum");
       hFeeSig[i] = new TH1D(hname.Data(),htitle.Data(),200,0,10);
+      hname   = TString::Format("%s%d","hFeeSigHiR",i);
+      htitle  = TString::Format("%s%d%s","Corrected FEE SignalSum for R>2, fee ",i,";Corrected SignalSum");
+      hFeeSigHiR[i] = new TH1D(hname.Data(),htitle.Data(),200,0,10);
       hname   = TString::Format("%s%d","hFeeSigRaw",i);
       htitle  = TString::Format("%s%d%s","Raw FEE SignalSum, fee ",i,";SignalSumRaw");
       hFeeSigRaw[i] = new TH1D(hname.Data(),htitle.Data(),500,0,1000);
@@ -138,6 +165,7 @@ void GetFeeSigHists() //one time pass through all entries and writing out to a n
     
       /////////////////
       //Fixes for fuck ups:
+      ////// NB: FIXES HANDLED BELOW IN PADDLE LOOP /////
       // v12.1.NT (new tracking): screwed up SignalSum. NB: THis takes care of normalization to mpv[8] but not thickness correction
       // Loop over FEEs in each paddle and fix:
       //HLX: 0-7 lower, 8-15 upper, 16 is bore
@@ -221,7 +249,7 @@ void GetFeeSigHists() //one time pass through all entries and writing out to a n
           } 
           if (i==1) //bore
           {
-            padt2D = &fCal.boret[0][0][0]; //bore
+            padt2D = &fCal.boret[0][0]; //bore
             thck[i] = thickness(i, padt2D, (tofX[i]-padx[i])/10. , (tofY[i]-pady[i])/10. );  // positions in cm, not mm (/10.); the BP does NOT need the 1/2 paddle shift
           }
         }
@@ -251,12 +279,14 @@ void GetFeeSigHists() //one time pass through all entries and writing out to a n
             int SCfeeID = laneIdx*8 + chanIdx; //HLX labels. tofcal12
             double feeSignalRaw = feeHit.fSignalSumRaw;
             //fuck-up fix:
-            double chanGain = fCal.mpv[SCfeeID]/fCal.mpv[8];  //normalize to FEE8 (paddle 0, FEE0)
+            double chanGain = fCal.mpv[SCfeeID]/fCal.mpv[1];  //normalize to FEE5
+//            double chanGain = fCal.mpv[SCfeeID]/fCal.mpv[8];  //normalize to FEE8 (paddle 0, FEE0)
             feeHit.fSignalSum = feeSignalRaw/chanGain/fCal.mippk;
             //back to normal:
             feeHit.fSignalSum *= tcorr[i]/padPLC[i];
             double feeSignal = feeHit.fSignalSum;
-            hFeeSig[SCfeeID]->Fill(sqrt(feeSignal));
+            hFeeSig[SCfeeID]->Fill(feeSignal);
+            if (rig > 2.) hFeeSigHiR[SCfeeID]->Fill(feeSignal);
             feeSignalRaw *= tcorr[i]/padPLC[i];
             hFeeSigRaw[SCfeeID]->Fill(feeSignalRaw);
           }

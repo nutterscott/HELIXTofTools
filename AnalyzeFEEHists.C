@@ -1,4 +1,11 @@
 ///
+//
+//  NOTE: TO suppress graphics to the screen, run in batch mode:
+// gROOT->SetBatch(kTRUE);
+//  OR
+// root -b ....
+//
+//
 vector<string> getFileListVector(string filename ){
   vector<string> fileListVector;
   std::ifstream file;
@@ -50,6 +57,7 @@ void AnalyzeFEEHists(int runnum)
   for (int i=0;i<72;i++)
   {
 //    TString hname   = TString::Format("%s%d","hFeeSig",i);
+//    TString hname   = TString::Format("%s%d","hFeeSigHiR",i);
     TString hname   = TString::Format("%s%d","hFeeSigRaw",i);
     hFeeSig[i] = (TH1D*)ipf->Get(hname.Data());
   }
@@ -114,7 +122,7 @@ void AnalyzeFEEHists(int runnum)
     double xmin_2 = max(pars[1]-4.*pars[2], 10.);
     double xmax_2 = min(pars[1]+5.*pars[2], 1000.);
     hFeeSig[i]->GetXaxis()->SetRangeUser(xmin_2,xmax_2);  //limit following search for maxval to this range
-    fg->SetParameters(pars); //one of these will be wrong
+    fg->SetParameters(pars); //one of these function's pars will be wrong
     flan->SetParameters(pars);
 //    if (method <= 1) hFeeSig[i]->Fit(fg,opt.Data(),"",maxval-dsmin,maxval+dsmax);
 //    if (method == 2) hFeeSig[i]->Fit(flan,opt.Data(),"",maxval-dsmin,maxval+dsmax);
@@ -129,6 +137,9 @@ void AnalyzeFEEHists(int runnum)
     double chi2_2 = fit_2->GetChisquare();
     cout << i << "\t" << pk << "\t" << pkerr << "\t" << chi2 << "\t" << chi2_2 << endl;
     txtout << i << "\t" << pk << "\t" << pkerr << "\t" << chi2_2 << endl;
+    
+    hFeeSig[i]->GetXaxis()->SetRangeUser(xmin,xmax);      //reset drawing range
+    
   }
   
   txtout.close();
@@ -182,11 +193,13 @@ void AnalyzeFEEHists(int runnum)
     delete cv[i];
   }
   
+  ipf->Close();
+  
 }
 
 ////////////////////////
 /////
-void RunAnalyzeFEEHists(string runFileListName)
+void RunAnalyzeFEEHists(string runFileListName = "AllGoodRuns.txt")
 {
 
   vector<string> runList = getFileListVector(runFileListName );
