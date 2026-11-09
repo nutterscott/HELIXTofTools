@@ -130,7 +130,7 @@ class HXA_Stg2_TOFEvent_AlgoTemplateAnaly : public HXA_Stg2_TOFEvent_AlgoBase {
       Double_t etoeshift[17];
       Double_t peakuu[40], widthuu[40], peakud[40], widthud[40], peakdu[40], widthdu[40], peakdd[40], widthdd[40];
 //      Double_t interT[64],einterT[64],slopeT[64],eslopeT[64],interB[64],einterB[64],slopeB[64],eslopeB[64];
-//      Double_t interTW[64],einterTW[64],slopeTW[64],eslopeTW[64];
+      Double_t interTW[64],einterTW[64],slopeTW[64],eslopeTW[64];
 //      Int_t padnum[17];
 //      Double_t topx[8][7],topy[8][17],topt[8][7][17],botx[8][7],boty[8][17],bott[8][7][17]; //,borex[1][11],borey[1][11],boret[1][11][11];
   

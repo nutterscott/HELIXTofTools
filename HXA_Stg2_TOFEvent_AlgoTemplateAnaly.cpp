@@ -740,6 +740,7 @@ double HXA_Stg2_TOFEvent_AlgoTemplateAnaly::getSCPulseSum(const vector<float> in
 bool HXA_Stg2_TOFEvent_AlgoTemplateAnaly::loadSCTOFCalibs(string ipfName) //only called once
 {
   ////////  NB: put checks here to make sure file is not already open?  /////////  
+  ////////  NB: put checks here to make sure correct version is opened?  /////////  
 
   if (!std::filesystem::exists(ipfName.c_str())) {
     hlog::error("HXA_Stg2_TOFEvent_AlgoTemplateAnaly::loadSCTOFCalibs => file not found: {}", ipfName);
@@ -757,7 +758,7 @@ bool HXA_Stg2_TOFEvent_AlgoTemplateAnaly::loadSCTOFCalibs(string ipfName) //only
   fTOFcal = (TTree*)fFile->Get("tofcal");
 
   ///////////////////
-  //   VALID FOR tofcalv12 AND AFTER:
+  //   VALID FOR tofcalv13 AND AFTER:
   ///////////////////
   // global ToF parameters, same for any run number
   fTOFcal->SetBranchAddress("pup",  fRtCal.pup);  // for each of 72 FEEs, up ramp parameters (7 of them) for GV function
@@ -767,18 +768,18 @@ bool HXA_Stg2_TOFEvent_AlgoTemplateAnaly::loadSCTOFCalibs(string ipfName) //only
   //  down ramp:   -[0]+[0]*(1.-[1]*exp(-[2]*(x-[6]))+exp(-[3]*(x-[6]))*(([1]-1.)*cos([4]*(x-[6]))-[5]*sin([4]*(x-[6]))))
   fTOFcal->SetBranchAddress("epdn", fRtCal.epdn);  // for each of 72 FEEs, error on down ramp parameters (7 of them) for GV function
   fTOFcal->SetBranchAddress("mippk",&fRtCal.mippk);  // MIP peak, average most probable Landau fit value, used for determining the charge Z from the pulse integral between samples 11 and 25 (inclusive)
-//  fTOFcal->SetBranchAddress("interTW",&fRtCal.interTW);  // intercept for timewalk correction, for 64 pairs of paddles (set to 1. for trivial ones)
-//  fTOFcal->SetBranchAddress("slopeTW",&fRtCal.slopeTW);  // slope for timewalk correction, for 64 pairs of paddles (set to 0. for trivial ones)	
-//  fTOFcal->SetBranchAddress("einterTW",&fRtCal.einterTW);  // error on intercept for timewalk correction, for 64 pairs of paddles (set to 0.0001 for trivial ones)
-//  fTOFcal->SetBranchAddress("eslopeTW",&fRtCal.eslopeTW);  // error on slope for timewalk correction, for 64 pairs of paddles (set to 0.0001 for trivial ones)	
-  //  fTOFcal->SetBranchAddress("interT",&interT);  // top paddle intercept for timewalk correction, for 64 pairs of paddles (set to 1. for trivial ones)
-  //  fTOFcal->SetBranchAddress("slopeT",&slopeT);  // top paddle slope for timewalk correction, for 64 pairs of paddles (set to 0. for trivial ones)	
-  //  fTOFcal->SetBranchAddress("einterT",&einterT);  // top paddle error on intercept for timewalk correction, for 64 pairs of paddles (set to 0.0001 for trivial ones)
-  //  fTOFcal->SetBranchAddress("eslopeT",&eslopeT);  // top paddle error on slope for timewalk correction, for 64 pairs of paddles (set to 0.0001 for trivial ones)	
-  //  fTOFcal->SetBranchAddress("interB",&interB);  // bottom paddle intercept for timewalk correction, for 64 pairs of paddles (set to 1. for trivial ones)
-  //  fTOFcal->SetBranchAddress("slopeB",&slopeB);  // bottom paddle slope for timewalk correction, for 64 pairs of paddles (set to 0. for trivial ones)	
-  //  fTOFcal->SetBranchAddress("einterB",&einterB);  // bottom paddle error on intercept for timewalk correction, for 64 pairs of paddles (set to 0.0001 for trivial ones)
-  //  fTOFcal->SetBranchAddress("eslopeB",&eslopeB);  // bottom paddle error on slope for timewalk correction, for 64 pairs of paddles (set to 0.0001 for trivial ones)
+  fTOFcal->SetBranchAddress("interTW",&fRtCal.interTW);  // intercept for timewalk correction, for 64 pairs of paddles (set to 1. for trivial ones)
+  fTOFcal->SetBranchAddress("slopeTW",&fRtCal.slopeTW);  // slope for timewalk correction, for 64 pairs of paddles (set to 0. for trivial ones)	
+  fTOFcal->SetBranchAddress("einterTW",&fRtCal.einterTW);  // error on intercept for timewalk correction, for 64 pairs of paddles (set to 0.0001 for trivial ones)
+  fTOFcal->SetBranchAddress("eslopeTW",&fRtCal.eslopeTW);  // error on slope for timewalk correction, for 64 pairs of paddles (set to 0.0001 for trivial ones)	
+//  fTOFcal->SetBranchAddress("interT",&interT);  // top paddle intercept for timewalk correction, for 64 pairs of paddles (set to 1. for trivial ones)
+//  fTOFcal->SetBranchAddress("slopeT",&slopeT);  // top paddle slope for timewalk correction, for 64 pairs of paddles (set to 0. for trivial ones)	
+//  fTOFcal->SetBranchAddress("einterT",&einterT);  // top paddle error on intercept for timewalk correction, for 64 pairs of paddles (set to 0.0001 for trivial ones)
+//  fTOFcal->SetBranchAddress("eslopeT",&eslopeT);  // top paddle error on slope for timewalk correction, for 64 pairs of paddles (set to 0.0001 for trivial ones)	
+//  fTOFcal->SetBranchAddress("interB",&interB);  // bottom paddle intercept for timewalk correction, for 64 pairs of paddles (set to 1. for trivial ones)
+//  fTOFcal->SetBranchAddress("slopeB",&slopeB);  // bottom paddle slope for timewalk correction, for 64 pairs of paddles (set to 0. for trivial ones)	
+//  fTOFcal->SetBranchAddress("einterB",&einterB);  // bottom paddle error on intercept for timewalk correction, for 64 pairs of paddles (set to 0.0001 for trivial ones)
+//  fTOFcal->SetBranchAddress("eslopeB",&eslopeB);  // bottom paddle error on slope for timewalk correction, for 64 pairs of paddles (set to 0.0001 for trivial ones)
 
   // ToF calibration parameters that change with run number
 
