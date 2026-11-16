@@ -18,8 +18,8 @@
 //Global shit:
 /////  SET THESE FOR READING AND TRANSLATION!! ////
 //Set up input and output tofcal ttree
-string kInputTofcalName = "tofcal13.1.root";
-string kOutputTofcalName = "tofcal13.2.root";
+string kInputTofcalName = "tofcal13.2.root";
+string kOutputTofcalName = "tofcal13.3.root";
 
 string kMergeInputTofcalName = "tofcal12b.root";
 
@@ -521,13 +521,14 @@ bool loadSCTOFCalibsv13(string ipfName = kInputTofcalName) //only called once V1
   fCalTree->SetBranchAddress("TDb",  fRtCal.TDb );  //paddle intercept, from DCTY vs fTimeDiff: fTimeDiffPos = m*fTimeDiff + b
 
   //better scheme for top and bottom paddle thickness measurements. NB: EVENTUALLY MOVE THIS TO SINGLE READ IN SEPARATE OBJECT IN tofcal root FILE, NOT IN TREE!
+  // Remove these in V14:
   fCalTree->SetBranchAddress("padx", fRtCal.padx);  // x values where we have thickness measurements for top and bot paddles in HELIX numbering scheme
   fCalTree->SetBranchAddress("pady", fRtCal.pady);  // y values where we have thickness measurements for top and bot paddles in HELIX numbering scheme
-  fCalTree->SetBranchAddress("padt", fRtCal.padt);  // thickness (mm) of top paddle at padx,pady  
-  //keep bore stuff:
   fCalTree->SetBranchAddress("borex", fRtCal.borex);  // x values where we have thickness measurements for bore paddle
   fCalTree->SetBranchAddress("borey", fRtCal.borey);  // y values where we have thickness measurements for bore paddle
+  //keep thicknesses:
   fCalTree->SetBranchAddress("boret", fRtCal.boret);  // thickness (mm) of bore paddle at topx,topy
+  fCalTree->SetBranchAddress("padt", fRtCal.padt);  // thickness (mm) of top paddle at padx,pady  
 
   //make copy in case of mods:
   fCalTree->GetEntry( 0 ); // load up the calibration parameters structure for first run

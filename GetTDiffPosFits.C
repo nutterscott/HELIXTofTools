@@ -163,7 +163,7 @@ void DrawDCTX()
     
 }
 
-void DrawDCTXSlice(int lobin = 90, int hibin=110)
+void DrawDCTXSlice(int lobin = 95, int hibin=105)
 {
   TH2D** hXY;
   hXY = new TH2D*[17];
@@ -172,6 +172,8 @@ void DrawDCTXSlice(int lobin = 90, int hibin=110)
   
   gStyle->SetOptLogy(0);
   gStyle->SetOptStat(11); //# of entries only
+  gStyle->SetPadTickX(1);
+  gStyle->SetPadTickY(1);
 
   for (int i=0;i<17;i++)
   {
@@ -188,15 +190,17 @@ void DrawDCTXSlice(int lobin = 90, int hibin=110)
   hXYxbot->Reset();
   
   //BOT
-  for (int i=8;i<16;i++)
+  for (int i=0;i<8;i++)
   {
     TString opt = "";
-    if (i>8) opt = "same";
+    if (i>0) opt = "same";
     hXYx[i]->Draw(opt);
     hXYxbot->Add(hXYx[i]);
   }
   hXYxbot->SetLineColor(9);
   hXYxbot->Draw("same");
+  double maxval = hXYxbot->GetMaximum();
+  hXYx[0]->GetYaxis()->SetRangeUser(0.,1.1*maxval);
 
   auto cxytop = new TCanvas("cxytop","cxytop",1);
 
@@ -204,14 +208,16 @@ void DrawDCTXSlice(int lobin = 90, int hibin=110)
   hXYxtop->Reset();
 
   //TOP
-  for (int i=0;i<8;i++)
+  for (int i=8;i<16;i++)
   {
     TString opt = "";
-    if (i>0) opt = "same";
+    if (i>8) opt = "same";
     hXYx[i]->Draw(opt);
     hXYxtop->Add(hXYx[i]);
   }
   hXYxtop->SetLineColor(9);
   hXYxtop->Draw("same");
+  maxval = hXYxtop->GetMaximum();
+  hXYx[8]->GetYaxis()->SetRangeUser(0.,1.1*maxval);
     
 }

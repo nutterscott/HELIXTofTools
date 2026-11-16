@@ -5,7 +5,7 @@
 // Run list taken from runs in tofcal tree.
 //
 //
-// Updated to tofcal13 11/9/26 but untested SLN
+// Updated to tofcal13.2 (removed 12.2 screw up fixes) 11/9/26 but untested SLN
 
 // Process:
 // Create subdirectory FEESigs in build directory
@@ -278,13 +278,13 @@ void GetFeeSigHists() //one time pass through all entries and writing out to a n
             auto [laneIdx, chanIdx] = theGeom->fTOF.fGeoMap[{paddleID, endID, feeID}];
             int SCfeeID = laneIdx*8 + chanIdx; //HLX labels. tofcal12
             double feeSignalRaw = feeHit.fSignalSumRaw;
-            //fuck-up fix:
-            double chanGain = fCal.mpv[SCfeeID]/fCal.mpv[1];  //normalize to FEE5
-//            double chanGain = fCal.mpv[SCfeeID]/fCal.mpv[8];  //normalize to FEE8 (paddle 0, FEE0)
-            feeHit.fSignalSum = feeSignalRaw/chanGain/fCal.mippk;
+            //fuck-up fix: Needed for runs with 12.2, but not 13.2
+//            double chanGain = fCal.mpv[SCfeeID]/fCal.mpv[1];  //normalize to FEE5
+////            double chanGain = fCal.mpv[SCfeeID]/fCal.mpv[8];  //normalize to FEE8 (paddle 0, FEE0)
+//            feeHit.fSignalSum = feeSignalRaw/chanGain/fCal.mippk;
             //back to normal:
-            feeHit.fSignalSum *= tcorr[i]/padPLC[i];
             double feeSignal = feeHit.fSignalSum;
+            feeSignal *= tcorr[i]/padPLC[i];
             hFeeSig[SCfeeID]->Fill(feeSignal);
             if (rig > 2.) hFeeSigHiR[SCfeeID]->Fill(feeSignal);
             feeSignalRaw *= tcorr[i]/padPLC[i];

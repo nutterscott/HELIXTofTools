@@ -2,19 +2,17 @@
 //input: toft or chain of skeletor toft trees
 //outfile: name of output file 
 
+// THIS VERSION (v5): Use with tofcal13.2 and higher
+
 //Driver (at end of this file):
 //void AnalTOFSkelList(const char *listName = "filelist.txt", const char *outName  = "combined.AnalTOFSkel.root")
 //  std::string dir = "/data/skeletor/";
 //  std::string fnameStem = "skeletor.";
 //  std::string fnameExt = ".root";
 
-
 // to run with list of runs:
 //void AnalTOFSkelList(const char *listName = "filelist.txt",
 //                    const char *outName  = "combined.AnalTOFSkel.root")
-
-//NOW SET TO WORK WITH skeletor.v12.2.NT (new tracking) as input. 
-// BUG FIXES TO fSignalSum APPLIED.
 
 //
 // SC 10/12/2026   repackage AnalTOFSkel.C into AnalTOFSkelTree.C which will be invoked within AnalTOFSkelChain.C to
@@ -37,7 +35,7 @@
 //include signal calculation for arithmetic and geometric means of paddles and ends
 #include "GetSignal.C"
 
-void AnalTOFSkelTree(TTree *toft, const TString &outfile, bool recalcChargeDivPos = true, bool recalcTimeDiffPos = true )
+void AnalTOFSkelTree(TTree *toft, const TString &outfile, bool recalcChargeDivPos = false, bool recalcTimeDiffPos = false )
 {
   /// Get the geometry singleton - it will autoload the files.
   auto theGeom = HLX_Geometry::getInstance();
@@ -547,12 +545,15 @@ void AnalTOFSkelTree(TTree *toft, const TString &outfile, bool recalcChargeDivPo
     
     /////////////////
     //Fixes for fuck ups:
+    //
+    // NOT NEEDED FOR 13.2
+    //
     // v12.1.NT (new tracking): screwed up SignalSum. NB: THis takes care of normalization to mpv[8] but not thickness correction
     // Loop over FEEs in each paddle and fix:
     //HLX: 0-7 lower, 8-15 upper, 16 is bore
     // Ensure getFEEHit returns a reference (&), not a copy or a const
     
-    
+/*    
     for (int i=0; i<3; i++) //paddle loop
     {      
       HLX_Stg2_TOFPaddleEndHit* ends[2] = {&(tofHits[i]->fHitEast), &(tofHits[i]->fHitWest)};
@@ -578,7 +579,7 @@ void AnalTOFSkelTree(TTree *toft, const TString &outfile, bool recalcChargeDivPo
         }
       }
     }
-    
+*/  
     //spot check:
 //    for (int i=0; i<3; i++)
 //    {
@@ -594,7 +595,6 @@ void AnalTOFSkelTree(TTree *toft, const TString &outfile, bool recalcChargeDivPo
 //      padSig[i] *= avgthick[padID[i]];
 //      padSig [i] *= fCal.mpv[8]/fCal.mpv[0];   //correct for getting the wrong normalization fee.
 //    } 
-    
     
     // Fuck-up finishing
     //////////////////
@@ -845,9 +845,11 @@ void AnalTOFSkelTree(TTree *toft, const TString &outfile, bool recalcChargeDivPo
 //  //  cout << ik << "SC: " <<padSigSC[0] << "\t" <<padSigSC[1] << "\t" <<padSigSC[2] << endl;
 //    cout << endl;
 
-      padSig [j] /= applyResponseCorr(padID[j],tofY[j]-padCenter[j]);   //correct for response along paddle length
-      padSigA[j] /= applyResponseCorr(padID[j],tofY[j]-padCenter[j]);   //correct for response along paddle length
-      padSigG[j] /= applyResponseCorr(padID[j],tofY[j]-padCenter[j]);   //correct for response along paddle length
+      //response correction:
+//    padSig [j] /= applyResponseCorr(padID[j],tofY[j]-padCenter[j]);   //correct for response along paddle length
+//    padSigA[j] /= applyResponseCorr(padID[j],tofY[j]-padCenter[j]);   //correct for response along paddle length
+//    padSigG[j] /= applyResponseCorr(padID[j],tofY[j]-padCenter[j]);   //correct for response along paddle length
+      
       chg [j]     = (padSig [j]>0)? sqrt(padSig [j]) : 0;
       chgA[j]     = (padSigA[j]>0)? sqrt(padSigA[j]) : 0;
       chgG[j]     = (padSigG[j]>0)? sqrt(padSigG[j]) : 0;
