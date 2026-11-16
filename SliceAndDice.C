@@ -72,7 +72,7 @@ void DrawSlices(TH1D **hsli, int nsli)
   //check whether this is hSignal or heSig
   double xmin = -1.0, xmax = 2.5; //heSig  
   TString hname = hsli[0]->GetName();
-  if (hname.Contains("hSignal"))  {    xmin = 0; xmax = 4;      }
+  if (hname.Contains("hSignal") || hname.Contains("heSig") )  {    xmin = 0; xmax = 4;      }
   
   int nx = 4, ny = 4;
   const int ncan = static_cast<int>(std::ceil(double(nsli)/nx/ny));
@@ -140,10 +140,10 @@ TGraphErrors* SliceAndDice(TH2 *h2, int method = 2, int bincomb=1, double xMin=-
   double x[nbins], maxval[nbins], pk[nbins], pkerr[nbins];
   TString hname = h2->GetName();
   
-  //check whether this is hSignal or heSig
-  double xmin = -1.0, xmax = 2.5; //heSig  
-  if (hname.Contains("hSignal"))  {    xmin = 0.1; xmax = 2.0;    }
-  
+  //check whether this is hSignal or heSig or heLnSig
+  double xmin = -1.0, xmax = 2.5; //heLnSig
+  if (hname.Contains("hSignal"))  {    xmin = 0.1; xmax = 2.0;    }  
+  if (hname.Contains("heSig")  )  {    xmin = 0.1; xmax = 4.0;    }  
   
 
   for (int i=0;i<nbins;i++) 
@@ -192,25 +192,11 @@ TGraphErrors* SliceAndDice(TH2 *h2, int method = 2, int bincomb=1, double xMin=-
   g1->SetMarkerStyle(kFullCircle);
   g1->SetMarkerColor(kGreen);
   std::vector<int> padID = extractPadID( string(hname.Data()) );
-  TString gtitle;
-  if (padID.size() == 1) //hSignal paddle hists
-    gtitle = TString::Format("%s%d%s","Paddle ",padID[0],";DCTY (mm);Signal peak (arb)");
-  else  //heSig end hists
-    gtitle = TString::Format("%s%d%s%d%s","Paddle ",padID[0]," end ", padID[1], ";DCTY (mm);Signal peak (MIP)");
+  TString gtitle = TString::Format("%s%d%s","Paddle ",padID[0],";DCTY (mm);Signal peak (arb)"); //hSignal fiull paddle  
+  if (hname.Contains("heSig")  )   {  gtitle = TString::Format("%s%d%s%d%s","Paddle ",padID[0]," end ", padID[1], ";DCTY (mm);Signal peak (MIP)"); }  
+  if (hname.Contains("heLnSig") )  {  gtitle = TString::Format("%s%d%s%d%s","Paddle ",padID[0]," end ", padID[1], ";DCTY (mm);loge(Signal peak)/loge(MIPs)"); }    
   g1->SetTitle(gtitle);
   g1->SetName(Form("%s%s",hname.Data(),"_gr"));
-/*  g1->Fit("pol3");
-  TF1 *f1 = g1->GetFunction("pol3");
-  double *pars = f1->GetParameters();
-  
-  //write out parameters
-  cout << endl; //get some space
-  cout << charge << "\t";
-  for (int i=0; i<4; i++) {cout << pars[i] << "\t";}
-  cout << endl;
-  cout << endl; //get some space
-*/  
-
 
   DrawEverything(hsli, knt, g1, h2);
   
@@ -470,26 +456,22 @@ void DoEndSignalAnal(int method = 2, int bincomb = 2)
   TH2D** heSigG;             //ln(end signal) vs dcty, geometric mean
   heSigG      = new TH2D*[17*2];  
   
-//  TProfile** peSig;             //ln(end signal) vs dcty, SPW getSignal()
-//  peSig      = new TProfile*[17*2];  
-//  TProfile** peSigA;             //ln(end signal) vs dcty, arithmetic mean
-//  peSigA      = new TProfile*[17*2];  
-//  TProfile** peSigG;             //ln(end signal) vs dcty, geometric mean
-//  peSigG      = new TProfile*[17*2];  
-  
   //get histograms:
   for (int i=0; i<17; i++) //paddles
   {
     for (int j=0; j<2; j++) //ends
     {
-      TString hname   = TString::Format("%s%d%s%d","heSigHiR",i,"_",j);
-//      TString hname   = TString::Format("%s%d%s%d","heSig",i,"_",j);
+//      TString hname   = TString::Format("%s%d%s%d","heLnSigHiR",i,"_",j);
+//      TString hname   = TString::Format("%s%d%s%d","heSigHiR",i,"_",j);
+      TString hname   = TString::Format("%s%d%s%d","heSig",i,"_",j);
       heSig[i*2+j] = (TH2D*)gFile->Get(hname.Data());
-      hname   = TString::Format("%s%d%s%d","heSigAHiR",i,"_",j);
-//      hname   = TString::Format("%s%d%s%d","heSigA",i,"_",j);
+//      hname   = TString::Format("%s%d%s%d","heLnSigAHiR",i,"_",j);
+//      hname   = TString::Format("%s%d%s%d","heSigAHiR",i,"_",j);
+      hname   = TString::Format("%s%d%s%d","heSigA",i,"_",j);
       heSigA[i*2+j] = (TH2D*)gFile->Get(hname.Data());
-      hname   = TString::Format("%s%d%s%d","heSigGHiR",i,"_",j);
-//      hname   = TString::Format("%s%d%s%d","heSigG",i,"_",j);
+//      hname   = TString::Format("%s%d%s%d","heLnSigGHiR",i,"_",j);
+//      hname   = TString::Format("%s%d%s%d","heSigGHiR",i,"_",j);
+      hname   = TString::Format("%s%d%s%d","heSigG",i,"_",j);
       heSigG[i*2+j] = (TH2D*)gFile->Get(hname.Data());
 
       //create graphs:
@@ -503,14 +485,6 @@ void DoEndSignalAnal(int method = 2, int bincomb = 2)
       }
       string grname = string(hname.Data())+"_gr";
       geSig[i*2+j]->SetName(grname.c_str());
-
-//    hname   = TString::Format("%s%d%s%d","peSig",i,"_",j);
-//    peSig[i*2+j] = (TProfile*)gFile->Get(hname.Data());
-//    hname   = TString::Format("%s%d%s%d","peSigA",i,"_",j);
-//    peSigA[i*2+j] = (TProfile*)gFile->Get(hname.Data());
-//    hname   = TString::Format("%s%d%s%d","peSigG",i,"_",j);
-//    peSigG[i*2+j] = (TProfile*)gFile->Get(hname.Data());
-
     }
   }
 
@@ -525,8 +499,9 @@ void DoEndSignalAnal(int method = 2, int bincomb = 2)
   TCanvas* cgetop = new TCanvas("cgetop","Top end graphs",1);
 //  cgetop->Divide(1,2);
   TCanvas* cgebot;
+  TCanvas* cgebore;
 
-  for (int i=0; i<16; i++)
+  for (int i=0; i<17; i++)
   {
     for (int j=0; j<2; j++)
     {
@@ -534,35 +509,75 @@ void DoEndSignalAnal(int method = 2, int bincomb = 2)
       {
         cgetop->BuildLegend();
         cgebot = new TCanvas("cgebot","Bottom end graphs",1);
-//        cgebot->Divide(1,2);
       }
-//      if (i<8 && j==0) cgetop->cd(1);
-//      else if (i<8 && j==0) cgetop->cd(2);
-//      else if (i>=8 && j==0) cgebot->cd(1);
-//      else if (i>=8 && j==1) cgebot->cd(2);
-//      cout << i*2+j << endl;
+      if (i==16 && j==0)
+      {
+        cgebot->BuildLegend();
+        cgebore = new TCanvas("cgebore","Bore end graphs",1);
+      }
       geSig[i*2+j]->SetLineColor(colors[i]);
       geSig[i*2+j]->SetMarkerColor(colors[i]);
-      geSig[i*2+j]->Fit("pol2","QO","",-700.,700.);
-      TF1* fit = geSig[i*2+j]->GetFunction("pol2");
+      TString hname = geSig[i*2+j]->GetName();
+      TF1* fit;
+      if (hname.Contains("heSig"))
+      {
+        geSig[i*2+j]->Fit("expo","QO","",-700.,700.); // not loge() version
+        fit = geSig[i*2+j]->GetFunction("expo");
+        if ((i==0 || i==8) && j==0) geSig[i*2+j]->GetYaxis()->SetRangeUser(0.,4.);
+      } else {
+        geSig[i*2+j]->Fit("pol2","QO","",-700.,700.); //loge() version
+        fit = geSig[i*2+j]->GetFunction("pol2");
+        if ((i==0 || i==8) && j==0) geSig[i*2+j]->GetYaxis()->SetRangeUser(-1.,2.0);
+      }
       fit->SetLineColor(colors[i]);
       double* pars = fit->GetParameters();
-      cout << "Graph for paddle " << i << ", end " << j << " fit params: " << pars[0] << "\t" << pars[1] << "\t" << pars[2] << endl;
-      txtout << i << "\t" << j << "\t" << pars[0] << "\t" << pars[1] << "\t" << pars[2] << endl;
+      cout << "Graph for paddle " << i << ", end " << j << " fit params: " << pars[0] << "\t" << pars[1];
+      txtout << i << "\t" << j << "\t" << pars[0] << "\t" << pars[1];
+      if (!hname.Contains("heSig")) 
+      {
+        cout << "\t" << pars[2];
+        txtout << "\t" << pars[2];
+      }
+      cout << endl;
+      txtout << endl;
+
       string opt = "lpsame";
-      if ((i==0 || i==8) && j==0) opt = "alp";
-  //    cgetop->cd(i+1);
-      if ((i==0 || i==8) && j==0) geSig[i*2+j]->GetYaxis()->SetRangeUser(-1.,2.0);
+      if ((i%8==0) && j==0) opt = "alp";
       geSig[i*2+j]->Draw(opt.c_str());
     }
   }
-  cgebot->BuildLegend();
-
+  cgebore->BuildLegend();
+  /*
   TCanvas* cgebore = new TCanvas("cgebore","Bore ends graph",1);
   for (int j=0; j<2; j++)
   {
     geSig[16*2+j]->SetLineColor(colors[16]);
     geSig[16*2+j]->SetMarkerColor(colors[16]);
+
+    TF1* fit;
+    if (hname.Contains("heSig"))
+    {
+      geSig[i*2+j]->Fit("expo","QO","",-700.,700.); // not loge() version
+      TF1* fit = geSig[i*2+j]->GetFunction("expo");
+      if ((i==0 || i==8) && j==0) geSig[i*2+j]->GetYaxis()->SetRangeUser(0.,2.5);
+    } else {
+      geSig[i*2+j]->Fit("pol2","QO","",-700.,700.); //loge() version
+      TF1* fit = geSig[i*2+j]->GetFunction("pol2");
+      if ((i==0 || i==8) && j==0) geSig[i*2+j]->GetYaxis()->SetRangeUser(-1.,2.0);
+    }
+    fit->SetLineColor(colors[i]);
+    double* pars = fit->GetParameters();
+    cout << "Graph for paddle " << i << ", end " << j << " fit params: " << pars[0] << "\t" << pars[1];
+    txtout << i << "\t" << j << "\t" << pars[0] << "\t" << pars[1];
+    if (hname.Contains("heSig")) 
+    {
+      cout << "\t" << pars[2];
+      txtout << "\t" << pars[2];
+    }
+    cout << endl;
+    txtout << endl;
+
+
     geSig[16*2+j]->Fit("pol2","QO","",-700.,700.);
     TF1* fit = geSig[16*2+j]->GetFunction("pol2");
     fit->SetLineColor(colors[16]);
@@ -573,7 +588,7 @@ void DoEndSignalAnal(int method = 2, int bincomb = 2)
     if (j==0) geSig[16*2+j]->Draw("alp");
     else geSig[16*2+j]->Draw("same");
   }
-  
+*/  
   txtout.close();
   
   //the end  

@@ -318,26 +318,37 @@ void AnalTOFSkelTree(TTree *toft, const TString &outfile, bool recalcChargeDivPo
   //fee to fee end timing differences
   TH1D** hEnddT;
   hEnddT = new TH1D*[17*2];
-  TH2D** heSig;             //ln(end signal) vs dcty, SPW getSignal()
+
+  //straight end signal
+  TH2D** heSig;             //end signal vs dcty, SPW getSignal()
   heSig      = new TH2D*[17*2];  
-  TH2D** heSigA;             //ln(end signal) vs dcty, arithmetic mean
+  TH2D** heSigA;             //end signal vs dcty, arithmetic mean
   heSigA      = new TH2D*[17*2];  
-  TH2D** heSigG;             //ln(end signal) vs dcty, geometric mean
+  TH2D** heSigG;             //end signal vs dcty, geometric mean
   heSigG      = new TH2D*[17*2];  
-  TH2D** heSigHiR;             //ln(end signal) vs dcty, SPW getSignal()
+
+  TH2D** heSigHiR;             //end signal vs dcty, SPW getSignal()
   heSigHiR      = new TH2D*[17*2];  
-  TH2D** heSigAHiR;             //ln(end signal) vs dcty, arithmetic mean
+  TH2D** heSigAHiR;             //end signal vs dcty, arithmetic mean
   heSigAHiR      = new TH2D*[17*2];  
-  TH2D** heSigGHiR;             //ln(end signal) vs dcty, geometric mean
+  TH2D** heSigGHiR;             //end signal vs dcty, geometric mean
   heSigGHiR      = new TH2D*[17*2];  
 
-//  TProfile** peSig;             //ln(end signal) vs dcty, SPW getSignal()
-//  peSig      = new TProfile*[17*2];  
-//  TProfile** peSigA;             //ln(end signal) vs dcty, SPW getSignal()
-//  peSigA      = new TProfile*[17*2];  
-//  TProfile** peSigG;             //ln(end signal) vs dcty, SPW getSignal()
-//  peSigG      = new TProfile*[17*2];  
-  
+  //log(end signal)
+  TH2D** heLnSig;             //ln(end signal) vs dcty, SPW getSignal()
+  heLnSig      = new TH2D*[17*2];  
+  TH2D** heLnSigA;             //ln(end signal) vs dcty, arithmetic mean
+  heLnSigA      = new TH2D*[17*2];  
+  TH2D** heLnSigG;             //ln(end signal) vs dcty, geometric mean
+  heLnSigG      = new TH2D*[17*2];  
+
+  TH2D** heLnSigHiR;             //ln(end signal) vs dcty, SPW getSignal()
+  heLnSigHiR      = new TH2D*[17*2];  
+  TH2D** heLnSigAHiR;             //ln(end signal) vs dcty, arithmetic mean
+  heLnSigAHiR      = new TH2D*[17*2];  
+  TH2D** heLnSigGHiR;             //ln(end signal) vs dcty, geometric mean
+  heLnSigGHiR      = new TH2D*[17*2];  
+
   for (int i=0;i<17;i++)
   {
     for (int j=0;j<2;j++)
@@ -348,40 +359,55 @@ void AnalTOFSkelTree(TTree *toft, const TString &outfile, bool recalcChargeDivPo
       hEnddT[i*2+j] = new TH1D(hname.Data(),htitle.Data(),1000,-20,20);
 
       TString hname1   = TString::Format("%s%d%s%d","heSig",i,"_",j);
-      TString htitle1  = TString::Format("%s%d%s%d%s","loge(signal) vs (DCTY-padCenter), paddle ", i, " end ",j ,";(DCTY-padCenter) (mm);loge(signal) (ln(MIPs))");
-      heSig[i*2+j] = new TH2D(hname1.Data(),htitle1.Data(), 50,-800,800, 100,-2.,8.);
-
-//    hname1   = TString::Format("%s%d%s%d","peSig",i,"_",j);
-//    peSig[i*2+j] = new TProfile(hname1.Data(),htitle1.Data(), 50,-800,800, -2.,8.);
-//    peSig[i*2+j]->BuildOptions(-1.5,1.,"");
+      TString htitle1  = TString::Format("%s%d%s%d%s","End signal vs (DCTY-padCenter), paddle ", i, " end ",j ,";(DCTY-padCenter) (mm);signal MIPs)");
+      heSig[i*2+j] = new TH2D(hname1.Data(),htitle1.Data(), 50,-800,800, 800,0.,20.);
 
       hname1   = TString::Format("%s%d%s%d","heSigA",i,"_",j);
-      htitle1  = TString::Format("%s%d%s%d%s","loge(signalA) vs (DCTY-padCenter),  paddle ", i, " end ",j, ";(DCTY-padCenter) (mm);loge(signalA) (ln(MIPs))");
-      heSigA[i*2+j] = new TH2D(hname1.Data(),htitle1.Data(),50,-800,800, 100,-2.,8.);
-
-//    hname1   = TString::Format("%s%d%s%d","peSigA",i,"_",j);
-//    peSigA[i*2+j] = new TProfile(hname1.Data(),htitle1.Data(), 50,-800,800, -2.,8.);
-//    peSigA[i*2+j]->BuildOptions(-1.5,1.,"");
+      htitle1  = TString::Format("%s%d%s%d%s","End signalA vs (DCTY-padCenter),  paddle ", i, " end ",j, ";(DCTY-padCenter) (mm);signalA (MIPs)");
+      heSigA[i*2+j] = new TH2D(hname1.Data(),htitle1.Data(),50,-800,800, 800,0.,20.);
 
       hname1   = TString::Format("%s%d%s%d","heSigG",i,"_",j);
-      htitle1  = TString::Format("%s%d%s%d%s","loge(signalG) vs (DCTY-padCenter),  paddle ", i, " end ",j ,";(DCTY-padCenter) (mm);loge(signalG) (ln(MIPs))");
-      heSigG[i*2+j] = new TH2D(hname1.Data(),htitle1.Data(),50,-800,800, 100,-2.,8.);
-
-//    hname1   = TString::Format("%s%d%s%d","peSigG",i,"_",j);
-//    peSigG[i*2+j] = new TProfile(hname1.Data(),htitle1.Data(), 50,-800,800, -2.,8.);
-//    peSigG[i*2+j]->BuildOptions(-1.5,1.,"");
+      htitle1  = TString::Format("%s%d%s%d%s","End signalG vs (DCTY-padCenter),  paddle ", i, " end ",j ,";(DCTY-padCenter) (mm);signalG (MIPs)");
+      heSigG[i*2+j] = new TH2D(hname1.Data(),htitle1.Data(),50,-800,800, 800,0.,20.);
 
       hname1   = TString::Format("%s%d%s%d","heSigHiR",i,"_",j);
-      htitle1  = TString::Format("%s%d%s%d%s","loge(signal) vs (DCTY-padCenter) for R>2, paddle ", i, " end ",j ,";(DCTY-padCenter) (mm);loge(signal) (ln(MIPs))");
-      heSigHiR[i*2+j] = new TH2D(hname1.Data(),htitle1.Data(), 50,-800,800, 100,-2.,8.);
+      htitle1  = TString::Format("%s%d%s%d%s","End signal HiR vs (DCTY-padCenter), paddle ", i, " end ",j ,";(DCTY-padCenter) (mm);signal MIPs)");
+      heSigHiR[i*2+j] = new TH2D(hname1.Data(),htitle1.Data(), 50,-800,800, 800,0.,20.);
 
       hname1   = TString::Format("%s%d%s%d","heSigAHiR",i,"_",j);
-      htitle1  = TString::Format("%s%d%s%d%s","loge(signalA) vs (DCTY-padCenter) for R>2,  paddle ", i, " end ",j, ";(DCTY-padCenter) (mm);loge(signalA) (ln(MIPs))");
-      heSigAHiR[i*2+j] = new TH2D(hname1.Data(),htitle1.Data(),50,-800,800, 100,-2.,8.);
+      htitle1  = TString::Format("%s%d%s%d%s","End signalA HiR vs (DCTY-padCenter),  paddle ", i, " end ",j, ";(DCTY-padCenter) (mm);signalA (MIPs)");
+      heSigAHiR[i*2+j] = new TH2D(hname1.Data(),htitle1.Data(),50,-800,800, 800,0.,20.);
 
       hname1   = TString::Format("%s%d%s%d","heSigGHiR",i,"_",j);
+      htitle1  = TString::Format("%s%d%s%d%s","End signalG HiR vs (DCTY-padCenter),  paddle ", i, " end ",j ,";(DCTY-padCenter) (mm);signalG (MIPs)");
+      heSigGHiR[i*2+j] = new TH2D(hname1.Data(),htitle1.Data(),50,-800,800, 800,0.,20.);
+
+
+
+      hname1   = TString::Format("%s%d%s%d","heLnSig",i,"_",j);
+      htitle1  = TString::Format("%s%d%s%d%s","loge(signal) vs (DCTY-padCenter), paddle ", i, " end ",j ,";(DCTY-padCenter) (mm);loge(signal) (ln(MIPs))");
+      heLnSig[i*2+j] = new TH2D(hname1.Data(),htitle1.Data(), 50,-800,800, 100,-2.,8.);
+
+      hname1   = TString::Format("%s%d%s%d","heLnSigA",i,"_",j);
+      htitle1  = TString::Format("%s%d%s%d%s","loge(signalA) vs (DCTY-padCenter),  paddle ", i, " end ",j, ";(DCTY-padCenter) (mm);loge(signalA) (ln(MIPs))");
+      heLnSigA[i*2+j] = new TH2D(hname1.Data(),htitle1.Data(),50,-800,800, 100,-2.,8.);
+
+      hname1   = TString::Format("%s%d%s%d","heLnSigG",i,"_",j);
+      htitle1  = TString::Format("%s%d%s%d%s","loge(signalG) vs (DCTY-padCenter),  paddle ", i, " end ",j ,";(DCTY-padCenter) (mm);loge(signalG) (ln(MIPs))");
+      heLnSigG[i*2+j] = new TH2D(hname1.Data(),htitle1.Data(),50,-800,800, 100,-2.,8.);
+
+
+      hname1   = TString::Format("%s%d%s%d","heLnSigHiR",i,"_",j);
+      htitle1  = TString::Format("%s%d%s%d%s","loge(signal) vs (DCTY-padCenter) for R>2, paddle ", i, " end ",j ,";(DCTY-padCenter) (mm);loge(signal) (ln(MIPs))");
+      heLnSigHiR[i*2+j] = new TH2D(hname1.Data(),htitle1.Data(), 50,-800,800, 100,-2.,8.);
+
+      hname1   = TString::Format("%s%d%s%d","heLnSigAHiR",i,"_",j);
+      htitle1  = TString::Format("%s%d%s%d%s","loge(signalA) vs (DCTY-padCenter) for R>2,  paddle ", i, " end ",j, ";(DCTY-padCenter) (mm);loge(signalA) (ln(MIPs))");
+      heLnSigAHiR[i*2+j] = new TH2D(hname1.Data(),htitle1.Data(),50,-800,800, 100,-2.,8.);
+
+      hname1   = TString::Format("%s%d%s%d","heLnSigGHiR",i,"_",j);
       htitle1  = TString::Format("%s%d%s%d%s","loge(signalG) vs (DCTY-padCenter) for R>2,  paddle ", i, " end ",j ,";(DCTY-padCenter) (mm);loge(signalG) (ln(MIPs))");
-      heSigGHiR[i*2+j] = new TH2D(hname1.Data(),htitle1.Data(),50,-800,800, 100,-2.,8.);
+      heLnSigGHiR[i*2+j] = new TH2D(hname1.Data(),htitle1.Data(),50,-800,800, 100,-2.,8.);
 
     }
   }
@@ -462,14 +488,19 @@ void AnalTOFSkelTree(TTree *toft, const TString &outfile, bool recalcChargeDivPo
   auto hallZSC2  = new TH1D("hallZSC2" , "Z t+b+bp (SC), t. corr." , 240, 0, 10);
   auto hallZSCcorr2  = new TH1D("hallZSCcorr2" , "Z t+b+bp (SC+fudge), t. corr." , 240, 0, 10);
   auto htbZSC2  = new TH1D("htbZSC2" , "Z t+b (SC), t. corr." , 240, 0, 10);
-
+  */
   // charge determination adding response correction
-  auto hallZ3   = new TH1D("hallZ3" , "Z t+b+bp, t corr." , 240, 0, 10);
-  auto htbZ3    = new TH1D("htbZ3" , "Z t+b, t. corr." , 240, 0, 10);
-  auto hallZSC3 = new TH1D("hallZSC3" , "Z t+b+bp (SC), t. corr." , 240, 0, 10);
-  auto hallZSCcorr3  = new TH1D("hallZSCcorr3" , "Z t+b+bp (SC+fudge), t. corr." , 240, 0, 10);
-  auto htbZSC3  = new TH1D("htbZSC3" , "Z t+b (SC), t. corr." , 240, 0, 10);
-*/
+  TH2D* hBvTcut4      = new TH2D("hBvTcut4", "SC Signal: Bottom vs top within 0.4e;Top signal (MIP);Bottom signal (MIP)",240,0,12,240,0,12);
+  TH2D* hBTvBPcut4    = new TH2D("hBTvBPcut4", "SC Signal: TopBottomAve vs BP within 0.4e;BP signal (MIP);TopBottomAve signal (MIP)",240,0,12,240,0,12);
+  auto hallZ3         = new TH1D("hallZ3" , "Z t+b+bp, t corr." , 240, 0, 12);
+  auto htbZ3          = new TH1D("htbZ3" , "Z t+b, t. corr." , 240, 0, 12);
+  auto hallZSC3       = new TH1D("hallZSC3" , "Z t+b+bp (SC), t. corr." , 240, 0, 12);
+  auto hallZSCcorr3   = new TH1D("hallZSCcorr3" , "Z t+b+bp (SC+fudge), t. corr." , 240, 0, 12);
+  auto htbZSC3        = new TH1D("htbZSC3" , "Z t+b (SC), t. corr." , 240, 0, 12);
+  auto hfullallcuts4  = new TH1D("hfullallcuts4" , "All ToF Z T/B/BP within 0.4e" , 240, 0, 12);
+  auto hfullallcuts4b = new TH1D("hfullallcuts4b" , "All ToF Z alternative T/B/BP within 0.4e" , 240, 0, 12);
+  auto hfullmipcuts4  = new TH1D("hfullmipcuts4" , "All ToF Z (MIPs) T/B/BP within 0.4e" , 240, 0, 12);
+
   //charge determination using DCT track for cos(zenith) and thickness
   TH2D* hBvT        = new TH2D("hBvT", "Signal: Bottom vs top;Top signal (MIP);Bottom signal (MIP)",240,0,12,240,0,12);
   TH2D* hZvR        = new TH2D("hZvR", "Signal: Zave vs R (GV);Rigidity (GV);Zave (MIP)",600,0,30,240,0,12);
@@ -629,14 +660,22 @@ void AnalTOFSkelTree(TTree *toft, const TString &outfile, bool recalcChargeDivPo
         int endID     =  endHit[i*2+j].fTag.getPaddleEndID();
         int globalEndID = padID[i]*2+endID;
         int k = i*2+j;
-        if (eSig [k]>0) {heSig [globalEndID]->Fill(tofY[i]-padCenter[i], log(eSig [k])); /*peSig [globalEndID]->Fill(tofY[i]-padCenter[i], log(eSig [k]));*/}
-        if (eSigA[k]>0) {heSigA[globalEndID]->Fill(tofY[i]-padCenter[i], log(eSigA[k])); /*peSigA[globalEndID]->Fill(tofY[i]-padCenter[i], log(eSigA[k]));*/}
-        if (eSigG[k]>0) {heSigG[globalEndID]->Fill(tofY[i]-padCenter[i], log(eSigG[k])); /*peSigG[globalEndID]->Fill(tofY[i]-padCenter[i], log(eSigG[k]));*/}
+        //no log():
+        heSig [globalEndID]->Fill(tofY[i]-padCenter[i], eSig [k]);
+        heSigA[globalEndID]->Fill(tofY[i]-padCenter[i], eSigA[k]);
+        heSigG[globalEndID]->Fill(tofY[i]-padCenter[i], eSigG[k]);
+        // with log():
+        if (eSig [k]>0) {heLnSig [globalEndID]->Fill(tofY[i]-padCenter[i], log(eSig [k]));}
+        if (eSigA[k]>0) {heLnSigA[globalEndID]->Fill(tofY[i]-padCenter[i], log(eSigA[k]));}
+        if (eSigG[k]>0) {heLnSigG[globalEndID]->Fill(tofY[i]-padCenter[i], log(eSigG[k]));}
         if (rig > 2 || runnum >= 15550 ) //HiR or Boff
         {
-          if (eSig [k]>0) {heSigHiR [globalEndID]->Fill(tofY[i]-padCenter[i], log(eSig [k]));}
-          if (eSigA[k]>0) {heSigAHiR[globalEndID]->Fill(tofY[i]-padCenter[i], log(eSigA[k]));}
-          if (eSigG[k]>0) {heSigGHiR[globalEndID]->Fill(tofY[i]-padCenter[i], log(eSigG[k]));}
+          heSigHiR [globalEndID]->Fill(tofY[i]-padCenter[i], eSig [k]);
+          heSigAHiR[globalEndID]->Fill(tofY[i]-padCenter[i], eSigA[k]);
+          heSigGHiR[globalEndID]->Fill(tofY[i]-padCenter[i], eSigG[k]);
+          if (eSig [k]>0) {heLnSigHiR [globalEndID]->Fill(tofY[i]-padCenter[i], log(eSig [k]));}
+          if (eSigA[k]>0) {heLnSigAHiR[globalEndID]->Fill(tofY[i]-padCenter[i], log(eSigA[k]));}
+          if (eSigG[k]>0) {heLnSigGHiR[globalEndID]->Fill(tofY[i]-padCenter[i], log(eSigG[k]));}
         }
       }
     }
@@ -1027,14 +1066,16 @@ void AnalTOFSkelTree(TTree *toft, const TString &outfile, bool recalcChargeDivPo
     if ( zall > 0 && abs(padSigG[0] - padSigG[2]) < 0.4) hZGall[3]->Fill(sqrt(zall));
     if ( ztb  > 0 && abs(padSigG[0] - padSigG[2]) < 0.4) hZGtb [3]->Fill(sqrt(ztb));
 */
-/*    
-    double tofZ3[3]  = {pow(padSig[0], expo1), pow(padSig[1], expo1), pow(padSig[2], expo1)};
+   
+    //    double tofZ3[3]  = {pow(padSig[0], expo1), pow(padSig[1], expo1), pow(padSig[2], expo1)};
+    double tofZ3[3]  = {chgG[0], chgA[1], chgG[2]};
     double allZ3   = (tofZ3[0]+tofZ3[1]+tofZ3[2])/3.;
     double tbZ3    = (tofZ3[0]+tofZ3[2])/2.;
 
-    double allZSC3      = pow((tofZ3[0]+tofZ3[1]+tofZ3[2])/3.,expo2);   // SC  original
+    //    double allZSC3      = pow((tofZ3[0]+tofZ3[1]+tofZ3[2])/3.,expo2);   // SC  original
+    double allZSC3      = pow((padSigG[0]+padSigA[1]+padSigG[2])/3.,0.5);   // SC  original
     double allZSCcorr3  = (allZSC3 - 0.2499) / 0.8385;
-    double tbZSC3       = pow((tofZ3[0]+tofZ3[2])/2.,expo2);   // SC  original
+    double tbZSC3       = pow((padSigG[0]+padSigG[2])/2.,0.5);   // SC  original
     
     if (abs(tofZ3[0]-tofZ3[2])<0.4 ) { // apply top/bottom tight charge agreement
       hallZ3 -> Fill(allZ3);
@@ -1044,11 +1085,11 @@ void AnalTOFSkelTree(TTree *toft, const TString &outfile, bool recalcChargeDivPo
       hallZSCcorr3 -> Fill(allZSCcorr3);
       htbZSC3 -> Fill(tbZSC3);
     }
-*/
+
     /////////////////////////////////
     
-    double zall = (padSigG[0] + padSigA[1] + padSigG[2])/3.; //top, bottom: arith/geometric, bore arith/arith
-    double ztb  = (padSigG[0] + padSigG[2])/2.;
+    double zall = sqrt((padSigG[0] + padSigA[1] + padSigG[2])/3.); //top, bottom: arith/geometric, bore arith/arith
+    double ztb  = sqrt((padSigG[0] + padSigG[2])/2.);
     
     
     //fill comparison plots
@@ -1077,17 +1118,28 @@ void AnalTOFSkelTree(TTree *toft, const TString &outfile, bool recalcChargeDivPo
       if (DCTChi2<2.&&hitCount>60.&&inPaddle)   // DCT cuts, including whether track hits the right paddles
       {
 //	      if (beta>0.2&&beta<1.01) {hmass->Fill(allZSC2*rig*sqrt(pow(1./beta,2.)-1.));}   // mass*c^2 in GV units 
-	      if (beta>0.2&&beta<1.01) {hmass->Fill(zall*rig*sqrt(pow(1./beta,2.)-1.));}   // mass*c^2 in GV units 
+	      if (beta>0.2&&beta<1.01) {hmass->Fill(allZSC3*rig*sqrt(pow(1./beta,2.)-1.));}   // mass*c^2 in GV units 
       }
     }
     
 //    hZvR->Fill(rig, allZSC2); //rigidity on x; Zave on y
 //    hZvbeta->Fill(beta,allZSC2);
     hR->Fill(rig); //rigidity
-    hZvR->Fill(rig, zall); //rigidity on x; Zave on y
-    hZvbeta->Fill(beta,zall);
+    hZvR->Fill(rig, allZSC3); //rigidity on x; Zave on y
+    hZvbeta->Fill(beta,allZSC3);
     //    hBvT->Fill(pow(padSig[0],expo2), pow(padSig[2],expo2)); //top signal on x; bottom signal on y
     hBvT->Fill(chgG[0],chgG[2]); //top signal on x; bottom signal on y
+
+    // The following is useful to extract the true mipk
+    if (abs(chgG[0]-chgG[2])<0.4 && rig>2.) {// R>2 GV cut to ensure a MIP signal on the plateau of the Bethe curve
+      hBvTcut4->Fill(chgG[0],chgG[2]);
+      hBTvBPcut4->Fill(chgA[1],tbZSC3);
+      if (abs(tbZSC3-chgA[1])<0.4 ) {
+	hfullallcuts4->Fill(allZSC3);
+	hfullallcuts4b->Fill(allZ3);
+	hfullmipcuts4->Fill((padSigG[0]+padSigA[1]+padSigG[2])/3.);
+      }
+    }
 
   } //end of event loop
   
